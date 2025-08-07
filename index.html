@@ -1,17 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Contributor Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* Custom style for the modal backdrop */
-    .modal-backdrop {
-      background-color: rgba(0, 0, 0, 0.5);
-
-    }
-
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contributor Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
         /* Custom style for the modal backdrop */
         .modal-backdrop {
             background-color: rgba(0, 0, 0, 0.5);
@@ -21,599 +15,616 @@
         input[type="checkbox"]:checked {
             accent-color: green;
         }
-        /* Apply green color to checkbox tick when selected */
-input[type="checkbox"] {
-    accent-color: green;
-}
+        
+        /* Apply green color to all checkboxes (optional, if not checked) */
+        input[type="checkbox"] {
+            accent-color: green;
+        }
 
-  </style>
+    </style>
 </head>
 <body class="p-6 bg-gray-50 font-sans min-h-screen flex items-center justify-center">
 
-  <!-- Firebase SDKs -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- Global Variables (Canvas-specific) ---
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    
-    // Hardcoded Firebase config provided by the user
-    const firebaseConfig = {
-      apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
-      authDomain: "contribution-c5309.firebaseapp.com",
-      projectId: "contribution-c5309",
-      storageBucket: "contribution-c5309.firebasestorage.app",
-      messagingSenderId: "800641687170",
-      appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
-      measurementId: "G-DTJGZE3JEP"
-    };
+        // =====================================================================================================
+        // === IMPORTANT: YOUR FIREBASE CONFIGURATION IS NOW DIRECTLY IN THE CODE BELOW ===
+        // =====================================================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+            authDomain: "contribution-c5309.firebaseapp.com",
+            projectId: "contribution-c5309",
+            storageBucket: "contribution-c5309.firebasestorage.app",
+            messagingSenderId: "800641687170",
+            appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+            measurementId: "G-DTJGZE3JEP"
+        };
+        // =====================================================================================================
+        // === DO NOT EDIT BELOW THIS LINE ===
+        // =====================================================================================================
 
-    // --- DOM Elements ---
-    const loginContainer = document.getElementById('login-container');
-    const appContainer = document.getElementById('app-container');
-    const contributorTableBody = document.getElementById('contributor-table');
-    const tableContainer = document.getElementById('table-container');
-    const showModalBtn = document.getElementById('show-modal-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const searchBar = document.getElementById('search-bar');
-    const customInputModal = document.getElementById('custom-input-modal');
-    const customInputModalTitle = document.getElementById('custom-input-modal-title');
-    const customInputModalInput = document.getElementById('custom-input-modal-input');
-    const customInputModalBtn = document.getElementById('custom-input-modal-btn');
-    const messageModal = document.getElementById('message-modal');
-    const messageModalText = document.getElementById('message-modal-text');
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const forgotPasswordForm = document.getElementById('forgot-password-form');
-    const authForms = document.getElementById('auth-forms');
-    const confirmationModal = document.getElementById('confirmation-modal');
-    const confirmationModalTitle = document.getElementById('confirmation-modal-title');
-    const confirmationModalText = document.getElementById('confirmation-modal-text');
-    const confirmationModalYesBtn = document.getElementById('confirmation-modal-yes');
-    const confirmationModalNoBtn = document.getElementById('confirmation-modal-no');
+        // --- Global Variables (Canvas-specific) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // --- DOM Elements ---
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const contributorTableBody = document.getElementById('contributor-table');
+        const tableContainer = document.getElementById('table-container');
+        const showModalBtn = document.getElementById('show-modal-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const searchBar = document.getElementById('search-bar');
+        const customInputModal = document.getElementById('custom-input-modal');
+        const customInputModalTitle = document.getElementById('custom-input-modal-title');
+        const customInputModalInput = document.getElementById('custom-input-modal-input');
+        const customInputModalBtn = document.getElementById('custom-input-modal-btn');
+        const messageModal = document.getElementById('message-modal');
+        const messageModalText = document.getElementById('message-modal-text');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const forgotPasswordForm = document.getElementById('forgot-password-form');
+        const authForms = document.getElementById('auth-forms');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const confirmationModalTitle = document.getElementById('confirmation-modal-title');
+        const confirmationModalText = document.getElementById('confirmation-modal-text');
+        const confirmationModalYesBtn = document.getElementById('confirmation-modal-yes');
+        const confirmationModalNoBtn = document.getElementById('confirmation-modal-no');
 
-    // --- State Variables ---
-    let app, auth, db;
-    let userId = null;
-    let maxDayColumns = 30;
-    let allContributors = [];
+        // --- State Variables ---
+        let app, auth, db;
+        let userId = null;
+        let maxDayColumns = 30;
+        let allContributors = [];
 
-    // --- Firebase Initialization and Authentication ---
-    async function initializeFirebase() {
-      try {
-          app = initializeApp(firebaseConfig);
-          auth = getAuth(app);
-          db = getFirestore(app);
+        // --- Firebase Initialization and Authentication ---
+        async function initializeFirebase() {
+            try {
+                // Initialize app with the provided config
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
 
-          // Set up authentication listener immediately
-          onAuthStateChanged(auth, (user) => {
-              if (user) {
-                  userId = user.uid;
-                  loginContainer.classList.add('hidden');
-                  appContainer.classList.remove('hidden');
-                  setupFirestoreListener();
-              } else {
-                  userId = null;
-                  loginContainer.classList.remove('hidden');
-                  appContainer.classList.add('hidden');
-                  contributorTableBody.innerHTML = ''; // Clear table on logout
-              }
-          });
-      } catch (error) {
-          console.error("Error initializing Firebase:", error);
-          showMessage('Initialization Error', `Failed to initialize the application: ${error.message}`);
-      }
-    }
+            
+                // Set up authentication listener to handle UI changes and fetch data
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        loginContainer.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+                        setupFirestoreListener();
+                    } else {
+                        userId = null;
+                        loginContainer.classList.remove('hidden');
+                        appContainer.classList.add('hidden');
+                        contributorTableBody.innerHTML = ''; // Clear table on logout
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                // Display a user-friendly error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'text-red-500 text-center font-bold';
+                errorDiv.textContent = `Failed to initialize the application: ${error.message}`;
+                loginContainer.innerHTML = '';
+                loginContainer.appendChild(errorDiv);
+            }
+        }
 
-    // --- UI/Modal Functions ---
-    // Function to show a specific authentication form and hide others
-    function showAuthForm(formId) {
-        document.getElementById('login-form-div').classList.add('hidden');
-        document.getElementById('register-form-div').classList.add('hidden');
-        document.getElementById('forgot-password-form-div').classList.add('hidden');
-        document.getElementById(formId).classList.remove('hidden');
-    }
+        // --- UI/Modal Functions ---
+        // Function to show a specific authentication form and hide others
+        function showAuthForm(formId) {
+            document.getElementById('login-form-div').classList.add('hidden');
+            document.getElementById('register-form-div').classList.add('hidden');
+            document.getElementById('forgot-password-form-div').classList.add('hidden');
+            document.getElementById(formId).classList.remove('hidden');
+        }
 
-    // Event listeners for switching between authentication forms
-    document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
-    document.querySelectorAll('.show-register-link').forEach(link => link.addEventListener('click', () => showAuthForm('register-form-div')));
-    document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
-    
-    function showMessage(title, text) {
-        document.getElementById('message-modal-title').textContent = title;
-        messageModalText.textContent = text;
-        messageModal.classList.remove('hidden');
-    }
+        // Event listeners for switching between authentication forms
+        document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
+        document.querySelectorAll('.show-register-link').forEach(link => link.addEventListener('click', () => showAuthForm('register-form-div')));
+        document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
+        
+        function showMessage(title, text) {
+            document.getElementById('message-modal-title').textContent = title;
+            messageModalText.textContent = text;
+            messageModal.classList.remove('hidden');
+        }
 
-    function showInputModal(title, placeholder, buttonText, callback) {
-        customInputModalTitle.textContent = title;
-        customInputModalInput.placeholder = placeholder;
-        customInputModalInput.value = '';
-        customInputModalBtn.textContent = buttonText;
-        customInputModal.classList.remove('hidden');
+        function showInputModal(title, placeholder, buttonText, callback) {
+            customInputModalTitle.textContent = title;
+            customInputModalInput.placeholder = placeholder;
+            customInputModalInput.value = '';
+            customInputModalBtn.textContent = buttonText;
+            customInputModal.classList.remove('hidden');
 
-        const submitHandler = () => {
-            const amount = parseFloat(customInputModalInput.value);
-            if (isNaN(amount) || amount <= 0) {
-                showMessage('Error', 'Please enter a valid positive number.');
+            const submitHandler = () => {
+                const amount = parseFloat(customInputModalInput.value);
+                if (isNaN(amount) || amount <= 0) {
+                    showMessage('Error', 'Please enter a valid positive number.');
+                    return;
+                }
+                callback(amount);
+                customInputModal.classList.add('hidden');
+                customInputModalBtn.removeEventListener('click', submitHandler);
+            };
+            customInputModalBtn.addEventListener('click', submitHandler);
+        }
+        
+        function showConfirmationModal(title, text, onConfirm) {
+            confirmationModalTitle.textContent = title;
+            confirmationModalText.textContent = text;
+            confirmationModal.classList.remove('hidden');
+
+            const handleYes = () => {
+                onConfirm();
+                confirmationModal.classList.add('hidden');
+                confirmationModalYesBtn.removeEventListener('click', handleYes);
+                confirmationModalNoBtn.removeEventListener('click', handleNo);
+            };
+            const handleNo = () => {
+                confirmationModal.classList.add('hidden');
+                confirmationModalYesBtn.removeEventListener('click', handleYes);
+                confirmationModalNoBtn.removeEventListener('click', handleNo);
+            };
+
+            confirmationModalYesBtn.addEventListener('click', handleYes);
+            confirmationModalNoBtn.addEventListener('click', handleNo);
+        }
+
+        // Close modal event listeners
+        document.getElementById('message-modal-close').addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+        document.getElementById('custom-input-modal-close').addEventListener('click', () => {
+            customInputModal.classList.add('hidden');
+        });
+        document.getElementById('confirmation-modal-close').addEventListener('click', () => {
+            confirmationModal.classList.add('hidden');
+        });
+        document.getElementById('message-modal').addEventListener('click', function(e) {
+            if (e.target === messageModal) {
+                messageModal.classList.add('hidden');
+            }
+        });
+        document.getElementById('custom-input-modal').addEventListener('click', function(e) {
+            if (e.target === customInputModal) {
+                customInputModal.classList.add('hidden');
+            }
+        });
+        document.getElementById('confirmation-modal').addEventListener('click', function(e) {
+            if (e.target === confirmationModal) {
+                confirmationModal.classList.add('hidden');
+            }
+        });
+        document.getElementById('contributor-modal').addEventListener('click', function(e) {
+            if (e.target === document.getElementById('contributor-modal')) {
+                document.getElementById('contributor-modal').classList.add('hidden');
+            }
+        });
+
+        // --- Authentication Form Logic ---
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm['login-email'].value;
+            const password = loginForm['login-password'].value;
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showMessage('Success', 'Logged in successfully!');
+            } catch (error) {
+                console.error("Login error:", error);
+                showMessage('Error', `Login failed: ${error.message}`);
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = registerForm['register-email'].value;
+            const password = registerForm['register-password'].value;
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                showMessage('Success', 'Account created successfully! You are now logged in.');
+            } catch (error) {
+                console.error("Registration error:", error);
+                showMessage('Error', `Registration failed: ${error.message}`);
+            }
+        });
+
+        forgotPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = forgotPasswordForm['forgot-password-email'].value;
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showMessage('Success', 'Password reset email sent. Check your inbox.');
+            } catch (error) {
+                console.error("Password reset error:", error);
+                showMessage('Error', `Password reset failed: ${error.message}`);
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                showMessage('Success', 'Logged out successfully!');
+            } catch (error) {
+                console.error("Logout error:", error);
+                showMessage('Error', `Logout failed: ${error.message}`);
+            }
+        });
+
+        // --- Firestore Data Handling ---
+        function setupFirestoreListener() {
+            if (!userId) {
+                console.error("User not authenticated.");
                 return;
             }
-            callback(amount);
-            customInputModal.classList.add('hidden');
-            customInputModalBtn.removeEventListener('click', submitHandler);
-        };
-        customInputModalBtn.addEventListener('click', submitHandler);
-    }
-    
-    function showConfirmationModal(title, text, onConfirm) {
-        confirmationModalTitle.textContent = title;
-        confirmationModalText.textContent = text;
-        confirmationModal.classList.remove('hidden');
 
-        const handleYes = () => {
-            onConfirm();
-            confirmationModal.classList.add('hidden');
-            confirmationModalYesBtn.removeEventListener('click', handleYes);
-            confirmationModalNoBtn.removeEventListener('click', handleNo);
-        };
-        const handleNo = () => {
-            confirmationModal.classList.add('hidden');
-            confirmationModalYesBtn.removeEventListener('click', handleYes);
-            confirmationModalNoBtn.removeEventListener('click', handleNo);
-        };
-
-        confirmationModalYesBtn.addEventListener('click', handleYes);
-        confirmationModalNoBtn.addEventListener('click', handleNo);
-    }
-
-    // Close modal event listeners
-    document.getElementById('message-modal-close').addEventListener('click', () => {
-        messageModal.classList.add('hidden');
-    });
-    document.getElementById('custom-input-modal-close').addEventListener('click', () => {
-        customInputModal.classList.add('hidden');
-    });
-    document.getElementById('confirmation-modal-close').addEventListener('click', () => {
-        confirmationModal.classList.add('hidden');
-    });
-    document.getElementById('message-modal').addEventListener('click', function(e) {
-      if (e.target === messageModal) {
-        messageModal.classList.add('hidden');
-      }
-    });
-    document.getElementById('custom-input-modal').addEventListener('click', function(e) {
-      if (e.target === customInputModal) {
-        customInputModal.classList.add('hidden');
-      }
-    });
-    document.getElementById('confirmation-modal').addEventListener('click', function(e) {
-      if (e.target === confirmationModal) {
-        confirmationModal.classList.add('hidden');
-      }
-    });
-    document.getElementById('contributor-modal').addEventListener('click', function(e) {
-      if (e.target === document.getElementById('contributor-modal')) {
-        document.getElementById('contributor-modal').classList.add('hidden');
-      }
-    });
-
-    // --- Authentication Form Logic ---
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = loginForm['login-email'].value;
-        const password = loginForm['login-password'].value;
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            showMessage('Success', 'Logged in successfully!');
-        } catch (error) {
-            console.error("Login error:", error);
-            showMessage('Error', `Login failed: ${error.message}`);
-        }
-    });
-
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = registerForm['register-email'].value;
-        const password = registerForm['register-password'].value;
-        try {
-            await createUserWithEmailAndPassword(auth, email, password);
-            showMessage('Success', 'Account created successfully! You are now logged in.');
-        } catch (error) {
-            console.error("Registration error:", error);
-            showMessage('Error', `Registration failed: ${error.message}`);
-        }
-    });
-
-    forgotPasswordForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = forgotPasswordForm['forgot-password-email'].value;
-        try {
-            await sendPasswordResetEmail(auth, email);
-            showMessage('Success', 'Password reset email sent. Check your inbox.');
-        } catch (error) {
-            console.error("Password reset error:", error);
-            showMessage('Error', `Password reset failed: ${error.message}`);
-        }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            await signOut(auth);
-            showMessage('Success', 'Logged out successfully!');
-        } catch (error) {
-            console.error("Logout error:", error);
-            showMessage('Error', `Logout failed: ${error.message}`);
-        }
-    });
-
-    // --- Firestore Data Handling ---
-    function setupFirestoreListener() {
-        if (!userId) {
-            console.error("User not authenticated.");
-            return;
-        }
-
-        const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
-        onSnapshot(contributorsCollectionRef, (snapshot) => {
-            allContributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderTable(allContributors);
-            if (allContributors.length > 0) {
-              tableContainer.classList.remove('hidden');
-            }
-        }, (error) => {
-            console.error("Error fetching contributors:", error);
-            showMessage('Error', 'Failed to load data from the database.');
-        });
-    }
-
-    async function addContributor(data) {
-        if (!userId) return;
-        try {
             const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
-            await addDoc(contributorsCollectionRef, data);
-            showMessage('Success', 'Contributor added successfully!');
-        } catch (error) {
-            console.error("Error adding contributor:", error);
-            showMessage('Error', `Failed to add contributor: ${error.message}`);
-        }
-    }
-
-    async function updateContributor(id, data) {
-        if (!userId) return;
-        try {
-            const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
-            await updateDoc(contributorDocRef, data);
-        } catch (error) {
-            console.error("Error updating contributor:", error);
-            showMessage('Error', `Failed to update contributor: ${error.message}`);
-        }
-    }
-
-    async function deleteContributor(id) {
-        if (!userId) return;
-        try {
-            const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
-            await deleteDoc(contributorDocRef);
-            showMessage('Success', 'Contributor deleted successfully!');
-        } catch (error) {
-            console.error("Error deleting contributor:", error);
-            showMessage('Error', `Failed to delete contributor: ${error.message}`);
-        }
-    }
-
-    // --- Table Rendering Logic ---
-    function renderTable(contributors) {
-        contributorTableBody.innerHTML = '';
-        const allDaysTicked = contributors.map(c => Math.floor(c.deposit / c.regAmount));
-        const newMaxDays = Math.max(30, ...allDaysTicked);
-        if (newMaxDays > maxDayColumns) {
-          maxDayColumns = newMaxDays;
-          updateHeaderDays(maxDayColumns);
+            onSnapshot(contributorsCollectionRef, (snapshot) => {
+                allContributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTable(allContributors);
+                if (allContributors.length > 0) {
+                    tableContainer.classList.remove('hidden');
+                }
+            }, (error) => {
+                console.error("Error fetching contributors:", error);
+                showMessage('Error', 'Failed to load data from the database.');
+            });
         }
 
-        contributors.forEach(contributor => {
-            const daysTicked = Math.floor(contributor.deposit / contributor.regAmount);
-            const row = document.createElement('tr');
-            row.innerHTML = `
-              <td class="border px-4 py-2">${contributor.name}</td>
-              <td class="border px-4 py-2">${contributor.regNo}</td>
-              <td class="border px-4 py-2">${contributor.month}</td>
-              <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
-              <td class="border px-4 py-2">
-                <div class="font-semibold">₦${contributor.deposit.toFixed(2)}</div>
-                <div class="flex space-x-1 mt-1">
-                  <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
-                  <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
-                  <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Delete</button>
-                </div>
-              </td>
-              <td class="border px-4 py-2 withdrawal-1">₦${contributor.withdrawals[0]?.toFixed(2) || ''}</td>
-              <td class="border px-4 py-2 withdrawal-2">₦${contributor.withdrawals[1]?.toFixed(2) || ''}</td>
-              <td class="border px-4 py-2 withdrawal-3">₦${contributor.withdrawals[2]?.toFixed(2) || ''}</td>
-              ${generateCheckboxes(daysTicked, maxDayColumns)}
-            `;
-            contributorTableBody.appendChild(row);
-        });
-    }
-
-    function updateHeaderDays(newMaxDays) {
-      const headerRow = document.getElementById('table-header-row');
-      // Keep the first 8 columns
-      while (headerRow.children.length > 8) {
-        headerRow.removeChild(headerRow.lastChild);
-      }
-
-      for (let i = 1; i <= newMaxDays; i++) {
-        const th = document.createElement('th');
-        th.className = "border px-2 py-1 text-center min-w-[50px]";
-        th.textContent = `Day ${i}`;
-        headerRow.appendChild(th);
-      }
-    }
-    
-    function generateCheckboxes(daysTicked, totalDays) {
-      return Array.from({ length: totalDays }, (_, i) => {
-        const isChecked = i < daysTicked ? 'checked' : '';
-        return `
-          <td class="border px-2 py-1 text-center">
-            <input type="checkbox" disabled ${isChecked} />
-          </td>
-        `;
-      }).join('');
-    }
-
-    // --- Main Logic & Event Listeners ---
-    showModalBtn.addEventListener('click', () => {
-      document.getElementById('contributor-modal').classList.remove('hidden');
-    });
-
-    document.getElementById('close-modal-btn').addEventListener('click', () => {
-      document.getElementById('contributor-modal').classList.add('hidden');
-    });
-
-    document.getElementById('contributor-form').addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      const newContributor = {
-          name: this.elements['name'].value,
-          regNo: this.elements['reg-no'].value,
-          month: this.elements['month'].value,
-          regAmount: parseFloat(this.elements['reg-amount'].value),
-          deposit: parseFloat(this.elements['deposit'].value),
-          withdrawals: []
-      };
-
-      addContributor(newContributor);
-      this.reset();
-      document.getElementById('contributor-modal').classList.add('hidden');
-    });
-
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('delete-btn')) {
-            const contributorId = e.target.getAttribute('data-id');
-            const contributor = allContributors.find(c => c.id === contributorId);
-            if (!contributor) return;
-
-            if (e.target.classList.contains('add-btn')) {
-                showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount) => {
-                    const newDeposit = contributor.deposit + amount;
-                    updateContributor(contributorId, { deposit: newDeposit });
-                });
-            } else if (e.target.classList.contains('withdraw-btn')) {
-                showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
-                    if (amount > contributor.deposit) {
-                        showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
-                        return;
-                    }
-                    if (contributor.withdrawals.length >= 3) {
-                        showMessage('Error', 'Maximum of 3 withdrawals reached.');
-                        return;
-                    }
-                    const newDeposit = contributor.deposit - amount;
-                    const newWithdrawals = [...contributor.withdrawals, amount];
-                    updateContributor(contributorId, { deposit: newDeposit, withdrawals: newWithdrawals });
-                });
-            } else if (e.target.classList.contains('delete-btn')) {
-                showConfirmationModal('Confirm Deletion', 'Are you sure you want to delete this contributor? This action cannot be undone.', () => {
-                    deleteContributor(contributorId);
-                });
+        async function addContributor(data) {
+            if (!userId) return;
+            try {
+                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
+                await addDoc(contributorsCollectionRef, data);
+                showMessage('Success', 'Contributor added successfully!');
+            } catch (error) {
+                console.error("Error adding contributor:", error);
+                showMessage('Error', `Failed to add contributor: ${error.message}`);
             }
         }
-    });
-    
-    searchBar.addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const filteredContributors = allContributors.filter(contributor =>
-            contributor.name.toLowerCase().includes(searchTerm) ||
-            contributor.regNo.toLowerCase().includes(searchTerm)
-        );
-        renderTable(filteredContributors);
-    });
 
-    // Initial setup on window load
-    window.onload = initializeFirebase;
-  </script>
+        async function updateContributor(id, data) {
+            if (!userId) return;
+            try {
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                await updateDoc(contributorDocRef, data);
+            } catch (error) {
+                console.error("Error updating contributor:", error);
+                showMessage('Error', `Failed to update contributor: ${error.message}`);
+            }
+        }
 
-  <!-- --- Main Application UI (Hidden by default) --- -->
-  <div id="app-container" class="hidden w-full max-w-7xl">
-      <h1 class="text-2xl font-bold text-gray-800; " style="color: blue; margin-top: 10px;"> PROPERIOUS CORPERATIVE </h1>
-    <div class="flex justify-between items-center mb-6">
-      <h1 style=" font-family: 'Courier New', Courier, monospace;" >MONTHLY CONTRIBUTION</h1>
-      <div class="flex space-x-4">
-        <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
-          Add New Contributor
-        </button>
-        <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
-          Logout
-        </button>
-      </div>
-    </div>
+        async function deleteContributor(id) {
+            if (!userId) return;
+            try {
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                await deleteDoc(contributorDocRef);
+                showMessage('Success', 'Contributor deleted successfully!');
+            } catch (error) {
+                console.error("Error deleting contributor:", error);
+                showMessage('Error', `Failed to delete contributor: ${error.message}`);
+            }
+        }
 
-    <!-- Search Bar and Table Container -->
-    <div id="table-container">
-      <!-- Search Bar -->
-      <div class="mb-6">
-        <input
-          type="text"
-          id="search-bar"
-          placeholder="Search by Name or Reg No..."
-          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-        />
-      </div>
+        // --- Table Rendering Logic ---
+        function renderTable(contributors) {
+            contributorTableBody.innerHTML = '';
+            const allDaysTicked = contributors.map(c => Math.floor(c.deposit / c.regAmount));
+            const newMaxDays = Math.max(30, ...allDaysTicked);
+            if (newMaxDays > maxDayColumns) {
+                maxDayColumns = newMaxDays;
+                updateHeaderDays(maxDayColumns);
+            }
 
-      <!-- Table with dynamic data -->
-      <div class="overflow-x-auto rounded-lg shadow-md">
-        <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
-          <thead class="bg-gray-200 text-gray-800" id="table-head">
-            <tr id="table-header-row">
-              <th class="border px-4 py-2 min-w-[100px]">Name</th>
-              <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
-              <th class="border px-4 py-2 min-w-[100px]">Month</th>
-              <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
-              <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
-              <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
-              <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
-              <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
-            </tr>
-          </thead>
-          <tbody id="contributor-table" class="bg-white"></tbody>
-        </table>
-      </div>
-    </div>
+            contributors.forEach(contributor => {
+                const daysTicked = Math.floor(contributor.deposit / contributor.regAmount);
+                
+                // Format withdrawal data to include dates
+                const withdrawalHtml = contributor.withdrawals.map((withdrawal, index) => {
+                    const formattedDate = withdrawal.date ? new Date(withdrawal.date).toLocaleDateString() : 'N/A';
+                    return `
+                        <td class="border px-4 py-2 withdrawal-${index + 1}">
+                            ₦${withdrawal.amount.toFixed(2)}<br>
+                            <span class="text-xs text-gray-500">${formattedDate}</span>
+                        </td>
+                    `;
+                }).join('');
 
-    <!-- Modal for adding a new contributor -->
-    <div id="contributor-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
-      <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+                const emptyWithdrawals = Array(3 - contributor.withdrawals.length).fill(
+                    '<td class="border px-4 py-2"></td>'
+                ).join('');
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="border px-4 py-2">${contributor.name}</td>
+                    <td class="border px-4 py-2">${contributor.regNo}</td>
+                    <td class="border px-4 py-2">${contributor.month}</td>
+                    <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
+                    <td class="border px-4 py-2">
+                        <div class="font-semibold">₦${contributor.deposit.toFixed(2)}</div>
+                        <div class="flex space-x-1 mt-1">
+                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
+                            <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
+                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Delete</button>
+                        </div>
+                    </td>
+                    ${withdrawalHtml}
+                    ${emptyWithdrawals}
+                    ${generateCheckboxes(daysTicked, maxDayColumns)}
+                `;
+                contributorTableBody.appendChild(row);
+            });
+        }
+
+        function updateHeaderDays(newMaxDays) {
+            const headerRow = document.getElementById('table-header-row');
+            // Keep the first 5 columns and the withdrawal columns.
+            while (headerRow.children.length > 8) {
+                headerRow.removeChild(headerRow.lastChild);
+            }
+
+            for (let i = 1; i <= newMaxDays; i++) {
+                const th = document.createElement('th');
+                th.className = "border px-2 py-1 text-center min-w-[50px] bg-blue-100"; // Added bg-blue-100 class
+                th.textContent = ` ${i}`;
+                headerRow.appendChild(th);
+            }
+        }
+        
+        function generateCheckboxes(daysTicked, totalDays) {
+            return Array.from({ length: totalDays }, (_, i) => {
+                const isChecked = i < daysTicked ? 'checked' : '';
+                return `
+                    <td class="border px-2 py-1 text-center">
+                        <input type="checkbox" disabled ${isChecked} />
+                    </td>
+                `;
+            }).join('');
+        }
+
+        // --- Main Logic & Event Listeners ---
+        showModalBtn.addEventListener('click', () => {
+            document.getElementById('contributor-modal').classList.remove('hidden');
+        });
+
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('contributor-modal').classList.add('hidden');
+        });
+
+        document.getElementById('contributor-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const newContributor = {
+                name: this.elements['name'].value,
+                regNo: this.elements['reg-no'].value,
+                month: this.elements['month'].value,
+                regAmount: parseFloat(this.elements['reg-amount'].value),
+                deposit: parseFloat(this.elements['deposit'].value),
+                withdrawals: []
+            };
+
+            addContributor(newContributor);
+            this.reset();
+            document.getElementById('contributor-modal').classList.add('hidden');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('delete-btn')) {
+                const contributorId = e.target.getAttribute('data-id');
+                const contributor = allContributors.find(c => c.id === contributorId);
+                if (!contributor) return;
+
+                if (e.target.classList.contains('add-btn')) {
+                    showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount) => {
+                        const newDeposit = contributor.deposit + amount;
+                        updateContributor(contributorId, { deposit: newDeposit });
+                    });
+                } else if (e.target.classList.contains('withdraw-btn')) {
+                    showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
+                        if (amount > contributor.deposit) {
+                            showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
+                            return;
+                        }
+                        if (!contributor.withdrawals) contributor.withdrawals = [];
+                        if (contributor.withdrawals.length >= 3) {
+                            showMessage('Error', 'Maximum of 3 withdrawals reached.');
+                            return;
+                        }
+                        const newDeposit = contributor.deposit - amount;
+                        const newWithdrawals = [...contributor.withdrawals, { amount: amount, date: new Date().toISOString() }];
+                        updateContributor(contributorId, { deposit: newDeposit, withdrawals: newWithdrawals });
+                    });
+                } else if (e.target.classList.contains('delete-btn')) {
+                    showConfirmationModal('Confirm Deletion', 'Are you sure you want to delete this contributor? This action cannot be undone.', () => {
+                        deleteContributor(contributorId);
+                    });
+                }
+            }
+        });
+        
+        searchBar.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredContributors = allContributors.filter(contributor =>
+                contributor.name.toLowerCase().includes(searchTerm) ||
+                contributor.regNo.toLowerCase().includes(searchTerm)
+            );
+            renderTable(filteredContributors);
+        });
+
+        // Initial setup on window load
+        window.onload = initializeFirebase;
+    </script>
+
+    <div id="app-container" class="hidden w-full max-w-7xl">
+        <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;"> PROPERIOUS CORPERATIVE </h1>
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-bold text-gray-800">Add New Contributor</h2>
-          <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            <h1 style=" font-family: 'Courier New', Courier, monospace;" >MONTHLY CONTRIBUTION</h1>
+            <div class="flex space-x-4">
+                <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                    Add New Contributor
+                </button>
+                <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
+                    Logout
+                </button>
+            </div>
         </div>
-        <form id="contributor-form" class="grid grid-cols-1 gap-4">
-          <input type="text" id="name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
-          <input type="text" id="reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
-          <select id="month" required class="border px-4 py-2 rounded-lg">
-            <option value="">Select Month</option>
-            <option>January</option>
-            <option>February</option>
-            <option>March</option>
-            <option>April</option>
-            <option>May</option>
-            <option>June</option>
-            <option>July</option>
-            <option>August</option>
-            <option>September</option>
-            <option>October</option>
-            <option>November</option>
-            <option>December</option>
-          </select>
-          <input type="number" id="reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" />
-          <input type="number" id="deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" />
-          <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Add Entry</button>
-        </form>
-      </div>
-    </div>
-  </div>
 
-  <!-- --- Authentication UI (Visible by default) --- -->
-  <div id="login-container" class="w-full max-w-md mx-auto p-8 bg-white rounded-xl shadow-lg">
-    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Contributor Tracker</h1>
-    <div id="auth-forms" class="flex flex-col gap-6">
+        <div id="table-container">
+            <div class="mb-6">
+                <input
+                    type="text"
+                    id="search-bar"
+                    placeholder="Search by Name or Reg No..."
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+            </div>
 
-      <!-- Login Form -->
-      <div id="login-form-div">
-        <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
-        <form id="login-form" class="grid grid-cols-1 gap-4">
-          <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-          <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-          <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
-        </form>
-        <div class="flex justify-between text-sm mt-4">
-          <a class="show-register-link text-blue-600 hover:underline cursor-pointer">Create an account</a>
-          <a class="show-forgot-password-link text-blue-600 hover:underline cursor-pointer">Forgot Password?</a>
+            <div class="overflow-x-auto rounded-lg shadow-md">
+                <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
+                    <thead class="bg-blue-200 text-gray-800" id="table-head">
+                        <tr id="table-header-row">
+                            <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                            <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
+                            <th class="border px-4 py-2 min-w-[100px]">Month</th>
+                            <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
+                            <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
+                            <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
+                            <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
+                            <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contributor-table" class="bg-white"></tbody>
+                </table>
+            </div>
         </div>
-      </div>
-
-      <!-- Register Form (hidden) -->
-      <div id="register-form-div" class="hidden">
-        <h2 class="text-2xl font-bold mb-4 text-center">Create Account</h2>
-        <form id="register-form" class="grid grid-cols-1 gap-4">
-          <input type="email" id="register-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-          <input type="password" id="register-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-          <button type="submit" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300">Register</button>
-        </form>
-        <p class="text-sm text-center mt-4">Already have an account? <a class="show-login-link text-blue-600 hover:underline cursor-pointer">Login here.</a></p>
-      </div>
-
-      <!-- Forgot Password Form (hidden) -->
-      <div id="forgot-password-form-div" class="hidden">
-        <h2 class="text-2xl font-bold mb-4 text-center">Forgot Password</h2>
-        <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
-          <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-          <button type="submit" class="bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-yellow-700 transition duration-300">Send Reset Email</button>
-        </form>
-        <p class="text-sm text-center mt-4"><a class="show-login-link text-blue-600 hover:underline cursor-pointer">Back to Login</a></p>
-      </div>
-
     </div>
-  </div>
 
-  <!-- --- Custom Modal for Input (replaces prompt) --- -->
-  <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
-      <div class="flex justify-between items-center mb-4">
-        <h3 id="custom-input-modal-title" class="text-xl font-bold text-gray-800">Modal Title</h3>
-        <button id="custom-input-modal-close" class="text-gray-500 hover:text-gray-800">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div class="flex flex-col gap-4">
-        <input type="number" id="custom-input-modal-input" class="border px-4 py-2 rounded-lg" />
-        <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
-      </div>
+    <div id="contributor-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Add New Contributor</h2>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" style="color: green;" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="contributor-form" class="grid grid-cols-1 gap-4">
+                <input type="text" id="name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
+                <input type="text" id="reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
+                <select id="month" required class="border px-4 py-2 rounded-lg">
+                    <option value="">Select Month</option>
+                    <option>January</option>
+                    <option>February</option>
+                    <option>March</option>
+                    <option>April</option>
+                    <option>May</option>
+                    <option>June</option>
+                    <option>July</option>
+                    <option>August</option>
+                    <option>September</option>
+                    <option>October</option>
+                    <option>November</option>
+                    <option>December</option>
+                </select>
+                <input type="number" id="reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" />
+                <input type="number" id="deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" />
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Add Entry</button>
+            </form>
+        </div>
     </div>
-  </div>
 
-  <!-- --- Custom Modal for Messages (replaces alert) --- -->
-  <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
-      <div class="flex justify-between items-center mb-4">
-        <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
-        <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <p id="message-modal-text" class="text-gray-700"></p>
-    </div>
-  </div>
+    <div id="login-container" class="w-full max-w-md mx-auto p-8 bg-white rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Contributor Tracker</h1>
+        <div id="auth-forms" class="flex flex-col gap-6">
 
-  <!-- --- Confirmation Modal --- -->
-  <div id="confirmation-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
-      <div class="flex justify-between items-center mb-4">
-        <h3 id="confirmation-modal-title" class="text-xl font-bold text-gray-800">Confirm Action</h3>
-        <button id="confirmation-modal-close" class="text-gray-500 hover:text-gray-800">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <p id="confirmation-modal-text" class="text-gray-700 mb-6"></p>
-      <div class="flex justify-end space-x-4">
-        <button id="confirmation-modal-no" class="bg-gray-400 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-500 transition duration-300">No</button>
-        <button id="confirmation-modal-yes" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300">Yes</button>
-      </div>
+            <div id="login-form-div">
+                <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
+                <form id="login-form" class="grid grid-cols-1 gap-4">
+                    <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                    <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
+                    <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
+                </form>
+                <div class="flex justify-between text-sm mt-4">
+                    <a class="show-register-link text-blue-600 hover:underline cursor-pointer">Create an account</a>
+                    <a class="show-forgot-password-link text-blue-600 hover:underline cursor-pointer">Forgot Password?</a>
+                </div>
+            </div>
+
+            <div id="register-form-div" class="hidden">
+                <h2 class="text-2xl font-bold mb-4 text-center">Create Account</h2>
+                <form id="register-form" class="grid grid-cols-1 gap-4">
+                    <input type="email" id="register-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                    <input type="password" id="register-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
+                    <button type="submit" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300">Register</button>
+                </form>
+                <p class="text-sm text-center mt-4">Already have an account? <a class="show-login-link text-blue-600 hover:underline cursor-pointer">Login here.</a></p>
+            </div>
+
+            <div id="forgot-password-form-div" class="hidden">
+                <h2 class="text-2xl font-bold mb-4 text-center">Forgot Password</h2>
+                <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
+                    <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                    <button type="submit" class="bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-yellow-700 transition duration-300">Send Reset Email</button>
+                </form>
+                <p class="text-sm text-center mt-4"><a class="show-login-link text-blue-600 hover:underline cursor-pointer">Back to Login</a></p>
+            </div>
+
+        </div>
     </div>
-  </div>
+
+    <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="custom-input-modal-title" class="text-xl font-bold text-gray-800">Modal Title</h3>
+                <button id="custom-input-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4">
+                <input type="number" id="custom-input-modal-input" class="border px-4 py-2 rounded-lg" />
+                <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
+                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="message-modal-text" class="text-gray-700"></p>
+        </div>
+    </div>
+
+    <div id="confirmation-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="confirmation-modal-title" class="text-xl font-bold text-gray-800">Confirm Action</h3>
+                <button id="confirmation-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="confirmation-modal-text" class="text-gray-700 mb-4">Are you sure you want to do this?</p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirmation-modal-no" class="bg-gray-400 text-white px-4 py-2 rounded-lg">No</button>
+                <button id="confirmation-modal-yes" class="bg-red-600 text-white px-4 py-2 rounded-lg">Yes</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
