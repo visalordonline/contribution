@@ -61,6 +61,12 @@
         const confirmationModalYesBtn = document.getElementById('confirmation-modal-yes');
         const confirmationModalNoBtn = document.getElementById('confirmation-modal-no');
 
+        // --- Helper function to get date string ---
+        function getCurrentDateStr() {
+            const d = new Date();
+            return d.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
         // --- Firebase Initialization and Authentication ---
         async function initializeFirebase() {
             try {
@@ -250,17 +256,19 @@
                 showMessage('Error', `Failed to delete contributor: ${error.message}`);
             }
         }
+
         // --- Table Rendering Logic ---
         function renderTable(contributors) {
             contributorTableBody.innerHTML = '';
-            const allDaysTicked = contributors.map(c => Math.floor(c.deposit / c.regAmount));
+            const allDaysTicked = contributors.map(c => Array.isArray(c.tickDates) ? c.tickDates.length : Math.floor(c.deposit / c.regAmount));
             const newMaxDays = Math.max(30, ...allDaysTicked);
             if (newMaxDays > maxDayColumns) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
             }
             contributors.forEach(contributor => {
-                const daysTicked = Math.floor(contributor.deposit / contributor.regAmount);
+                const withdrawals = Array.isArray(contributor.withdrawals) ? contributor.withdrawals : [];
+                const tickDates = Array.isArray(contributor.tickDates) ? contributor.tickDates : [];
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="border px-4 py-2">${contributor.name}</td>
@@ -275,10 +283,16 @@
                             <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Delete</button>
                         </div>
                     </td>
-                    <td class="border px-4 py-2 withdrawal-1">₦${contributor.withdrawals[0]?.toFixed(2) || ''}</td>
-                    <td class="border px-4 py-2 withdrawal-2">₦${contributor.withdrawals[1]?.toFixed(2) || ''}</td>
-                    <td class="border px-4 py-2 withdrawal-3">₦${contributor.withdrawals[2]?.toFixed(2) || ''}</td>
-                    ${generateCheckboxes(daysTicked, maxDayColumns)}
+                    <td class="border px-4 py-2 withdrawal-1">
+                        ${withdrawals[0] ? `₦${withdrawals[0].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[0].date}</span>` : ''}
+                    </td>
+                    <td class="border px-4 py-2 withdrawal-2">
+                        ${withdrawals[1] ? `₦${withdrawals[1].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[1].date}</span>` : ''}
+                    </td>
+                    <td class="border px-4 py-2 withdrawal-3">
+                        ${withdrawals[2] ? `₦${withdrawals[2].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[2].date}</span>` : ''}
+                    </td>
+                    ${generateCheckboxes(tickDates, maxDayColumns)}
                 `;
                 contributorTableBody.appendChild(row);
             });
@@ -293,28 +307,44 @@
                 headerRow.appendChild(th);
             }
         }
-        function generateCheckboxes(daysTicked, totalDays) {
+        function generateCheckboxes(tickDates, totalDays) {
             return Array.from({ length: totalDays }, (_, i) => {
-                const isChecked = i < daysTicked ? 'checked' : '';
-                return `<td class="border px-2 py-1 text-center"><input type="checkbox" disabled ${isChecked} /></td>`;
+                if (tickDates[i]) {
+                    return `<td class="border px-2 py-1 text-center">
+                        <input type="checkbox" disabled checked />
+                        <div class="text-xs text-gray-500">${tickDates[i]}</div>
+                    </td>`;
+                } else {
+                    return `<td class="border px-2 py-1 text-center"><input type="checkbox" disabled /></td>`;
+                }
             }).join('');
         }
+
         showModalBtn.addEventListener('click', () => { document.getElementById('contributor-modal').classList.remove('hidden'); });
         document.getElementById('close-modal-btn').addEventListener('click', () => { document.getElementById('contributor-modal').classList.add('hidden'); });
+
         document.getElementById('contributor-form').addEventListener('submit', function (e) {
             e.preventDefault();
+            const regAmount = parseFloat(this.elements['reg-amount'].value);
+            const deposit = parseFloat(this.elements['deposit'].value);
+            const daysTicked = Math.floor(deposit / regAmount);
+            const tickDates = [];
+            const todayStr = getCurrentDateStr();
+            for (let i = 0; i < daysTicked; i++) tickDates[i] = todayStr;
             const newContributor = {
                 name: this.elements['name'].value,
                 regNo: this.elements['reg-no'].value,
                 month: this.elements['month'].value,
-                regAmount: parseFloat(this.elements['reg-amount'].value),
-                deposit: parseFloat(this.elements['deposit'].value),
-                withdrawals: []
+                regAmount,
+                deposit,
+                withdrawals: [],
+                tickDates
             };
             addContributor(newContributor);
             this.reset();
             document.getElementById('contributor-modal').classList.add('hidden');
         });
+
         document.addEventListener('click', function (e) {
             if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('delete-btn')) {
                 const contributorId = e.target.getAttribute('data-id');
@@ -323,7 +353,13 @@
                 if (e.target.classList.contains('add-btn')) {
                     showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount) => {
                         const newDeposit = contributor.deposit + amount;
-                        updateContributor(contributorId, { deposit: newDeposit });
+                        let newTickDates = Array.isArray(contributor.tickDates) ? [...contributor.tickDates] : [];
+                        const prevDays = Array.isArray(contributor.tickDates) ? contributor.tickDates.length : Math.floor(contributor.deposit / contributor.regAmount);
+                        const nextDays = Math.floor(newDeposit / contributor.regAmount);
+                        for (let i = prevDays; i < nextDays; i++) {
+                            newTickDates[i] = getCurrentDateStr();
+                        }
+                        updateContributor(contributorId, { deposit: newDeposit, tickDates: newTickDates });
                     });
                 } else if (e.target.classList.contains('withdraw-btn')) {
                     showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
@@ -331,12 +367,14 @@
                             showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
                             return;
                         }
-                        if (contributor.withdrawals.length >= 3) {
+                        const withdrawals = Array.isArray(contributor.withdrawals) ? contributor.withdrawals : [];
+                        if (withdrawals.length >= 3) {
                             showMessage('Error', 'Maximum of 3 withdrawals reached.');
                             return;
                         }
                         const newDeposit = contributor.deposit - amount;
-                        const newWithdrawals = [...contributor.withdrawals, amount];
+                        const newWithdrawals = [...withdrawals, { amount, date: getCurrentDateStr() }];
+                        // Only update deposit and withdrawals, tickDates stay as-is (do NOT reduce ticks when withdrawing)
                         updateContributor(contributorId, { deposit: newDeposit, withdrawals: newWithdrawals });
                     });
                 } else if (e.target.classList.contains('delete-btn')) {
@@ -346,6 +384,7 @@
                 }
             }
         });
+
         searchBar.addEventListener('input', function(e) {
             const searchTerm = e.target.value.toLowerCase();
             const filteredContributors = allContributors.filter(contributor =>
@@ -359,7 +398,7 @@
 
     <!-- --- Main Application UI (Hidden by default) --- -->
     <div id="app-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;">DAILY CONTRIBUTION BOOK</h1>
+        <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;">DAILY CONTRIBUTION BOOK </h1>
         <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
         <div class="flex justify-between items-center mb-6">
             <h1 style=" font-family: 'Courier New', Courier, monospace;" >DAILY CONTRIBUTION BOOK</h1>
