@@ -34,7 +34,7 @@
         let app, auth, db;
         let userId = null;
         let userName = "";
-        let maxDayColumns = 30;
+        let maxDayColumns = 0;
         let allContributors = [];
 
         // --- DOM Elements ---
@@ -220,7 +220,20 @@
             if (!userId) return;
             const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
-                allContributors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allContributors = snapshot.docs.map(doc => {
+                    let data = doc.data();
+                    if (!Array.isArray(data.tickDates)) {
+                        const numTicks = Math.floor((data.totalContributions || data.deposit || 0) / (data.regAmount || 1));
+                        data.tickDates = new Array(numTicks).fill(getCurrentDateStr());
+                    }
+                    if (!Array.isArray(data.withdrawals)) {
+                        data.withdrawals = [];
+                    }
+                    if (typeof data.totalContributions !== 'number') {
+                        data.totalContributions = data.deposit || 0;
+                    }
+                    return { id: doc.id, ...data };
+                });
                 renderTable(allContributors);
                 if (allContributors.length > 0) tableContainer.classList.remove('hidden');
             }, (error) => {
@@ -260,15 +273,15 @@
         // --- Table Rendering Logic ---
         function renderTable(contributors) {
             contributorTableBody.innerHTML = '';
-            const allDaysTicked = contributors.map(c => Array.isArray(c.tickDates) ? c.tickDates.length : Math.floor(c.deposit / c.regAmount));
+            const allDaysTicked = contributors.map(c => c.tickDates.length);
             const newMaxDays = Math.max(30, ...allDaysTicked);
             if (newMaxDays > maxDayColumns) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
             }
             contributors.forEach(contributor => {
-                const withdrawals = Array.isArray(contributor.withdrawals) ? contributor.withdrawals : [];
-                const tickDates = Array.isArray(contributor.tickDates) ? contributor.tickDates : [];
+                const withdrawals = contributor.withdrawals;
+                const tickDates = contributor.tickDates;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="border px-4 py-2">${contributor.name}</td>
@@ -303,22 +316,23 @@
             for (let i = 1; i <= newMaxDays; i++) {
                 const th = document.createElement('th');
                 th.className = "border px-2 py-1 text-center min-w-[50px] bg-blue-100";
-                th.textContent = `Day ${i}`;
+                th.textContent = `Position ${i}`;
                 headerRow.appendChild(th);
             }
         }
-        function generateCheckboxes(tickDates, totalDays) {
-            return Array.from({ length: totalDays }, (_, i) => {
-                if (tickDates[i]) {
-                    return `<td class="border px-2 py-1 text-center">
-                        <input type="checkbox" disabled checked />
-                        <div class="text-xs text-gray-500">${tickDates[i]}</div>
-                    </td>`;
-                } else {
-                    return `<td class="border px-2 py-1 text-center"><input type="checkbox" disabled /></td>`;
-                }
-            }).join('');
-        }
+       function generateCheckboxes(tickDates, totalDays) {
+    return Array.from({ length: totalDays }, (_, i) => {
+        const hasTick = tickDates[i] !== undefined;
+        const dateText = typeof tickDates[i] === 'string' ? tickDates[i] : '';
+        return `
+            <td class="border px-2 py-1 text-center">
+                <input type="checkbox" disabled ${hasTick ? 'checked' : ''} />
+                ${dateText ? `<div class="text-xs text-gray-500">${dateText}</div>` : ''}
+            </td>
+        `;
+    }).join('');
+}
+
 
         showModalBtn.addEventListener('click', () => { document.getElementById('contributor-modal').classList.remove('hidden'); });
         document.getElementById('close-modal-btn').addEventListener('click', () => { document.getElementById('contributor-modal').classList.add('hidden'); });
@@ -337,6 +351,7 @@
                 month: this.elements['month'].value,
                 regAmount,
                 deposit,
+                totalContributions: deposit, // Initialize totalContributions with initial deposit
                 withdrawals: [],
                 tickDates
             };
@@ -353,13 +368,20 @@
                 if (e.target.classList.contains('add-btn')) {
                     showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount) => {
                         const newDeposit = contributor.deposit + amount;
-                        let newTickDates = Array.isArray(contributor.tickDates) ? [...contributor.tickDates] : [];
-                        const prevDays = Array.isArray(contributor.tickDates) ? contributor.tickDates.length : Math.floor(contributor.deposit / contributor.regAmount);
-                        const nextDays = Math.floor(newDeposit / contributor.regAmount);
-                        for (let i = prevDays; i < nextDays; i++) {
-                            newTickDates[i] = getCurrentDateStr();
+                        const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
+                        const prevTicks = contributor.tickDates.length;
+                        const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
+                        const additionalTicks = totalTicks - prevTicks;
+                        let newTickDates = [...contributor.tickDates];
+                        const todayStr = getCurrentDateStr();
+                        for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
+                            newTickDates[i] = todayStr;
                         }
-                        updateContributor(contributorId, { deposit: newDeposit, tickDates: newTickDates });
+                        updateContributor(contributorId, {
+                            deposit: newDeposit,
+                            totalContributions: newTotalContributions,
+                            tickDates: newTickDates
+                        });
                     });
                 } else if (e.target.classList.contains('withdraw-btn')) {
                     showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
@@ -367,15 +389,17 @@
                             showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
                             return;
                         }
-                        const withdrawals = Array.isArray(contributor.withdrawals) ? contributor.withdrawals : [];
+                        const withdrawals = contributor.withdrawals;
                         if (withdrawals.length >= 3) {
                             showMessage('Error', 'Maximum of 3 withdrawals reached.');
                             return;
                         }
                         const newDeposit = contributor.deposit - amount;
                         const newWithdrawals = [...withdrawals, { amount, date: getCurrentDateStr() }];
-                        // Only update deposit and withdrawals, tickDates stay as-is (do NOT reduce ticks when withdrawing)
-                        updateContributor(contributorId, { deposit: newDeposit, withdrawals: newWithdrawals });
+                        updateContributor(contributorId, {
+                            deposit: newDeposit,
+                            withdrawals: newWithdrawals
+                        });
                     });
                 } else if (e.target.classList.contains('delete-btn')) {
                     showConfirmationModal('Confirm Deletion', 'Are you sure you want to delete this contributor? This action cannot be undone.', () => {
