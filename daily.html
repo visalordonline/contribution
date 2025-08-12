@@ -293,7 +293,6 @@
                         <div class="flex space-x-1 mt-1">
                             <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
-                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Delete</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -315,7 +314,7 @@
             while (headerRow.children.length > 8) headerRow.removeChild(headerRow.lastChild);
             for (let i = 1; i <= newMaxDays; i++) {
                 const th = document.createElement('th');
-                th.className = "border px-2 py-1 text-center min-w-[50px] bg-blue-100";
+                th.className = "border px-2 py-1 text-center min-w-[50px] bg-green-100";
                 th.textContent = `Position ${i}`;
                 headerRow.appendChild(th);
             }
@@ -327,7 +326,7 @@
         return `
             <td class="border px-2 py-1 text-center">
                 <input type="checkbox" disabled ${hasTick ? 'checked' : ''} />
-                ${dateText ? `<div class="text-xs text-gray-500">${dateText}</div>` : ''}
+                ${dateText ? `<div class="text-xs text-green-500">${dateText}</div>` : ''}
             </td>
         `;
     }).join('');
