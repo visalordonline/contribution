@@ -19,7 +19,7 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase config: only Firestore, no storageBucket
+        // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
             authDomain: "contribution-c5309.firebaseapp.com",
@@ -49,6 +49,7 @@
         const customInputModal = document.getElementById('custom-input-modal');
         const customInputModalTitle = document.getElementById('custom-input-modal-title');
         const customInputModalInput = document.getElementById('custom-input-modal-input');
+        const customInputModalDate = document.getElementById('custom-input-modal-date');
         const customInputModalBtn = document.getElementById('custom-input-modal-btn');
         const messageModal = document.getElementById('message-modal');
         const messageModalText = document.getElementById('message-modal-text');
@@ -67,6 +68,13 @@
             return d.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
         }
 
+        // --- Helper function to format date for input ---
+        function formatDateForInput(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toISOString().split('T')[0];
+        }
+
         // --- Firebase Initialization and Authentication ---
         async function initializeFirebase() {
             try {
@@ -79,7 +87,6 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        // Get user name from Firestore
                         const userDocRef = doc(db, "users", userId);
                         const userDocSnap = await getDoc(userDocRef);
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
@@ -125,15 +132,21 @@
             customInputModalTitle.textContent = title;
             customInputModalInput.placeholder = placeholder;
             customInputModalInput.value = '';
+            customInputModalDate.value = formatDateForInput(getCurrentDateStr());
             customInputModalBtn.textContent = buttonText;
             customInputModal.classList.remove('hidden');
             const submitHandler = () => {
                 const amount = parseFloat(customInputModalInput.value);
+                const selectedDate = customInputModalDate.value;
                 if (isNaN(amount) || amount <= 0) {
                     showMessage('Error', 'Please enter a valid positive number.');
                     return;
                 }
-                callback(amount);
+                if (!selectedDate) {
+                    showMessage('Error', 'Please select a valid date.');
+                    return;
+                }
+                callback(amount, selectedDate);
                 customInputModal.classList.add('hidden');
                 customInputModalBtn.removeEventListener('click', submitHandler);
             };
@@ -178,7 +191,6 @@
             }
         });
 
-        // Registration with Name
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = registerForm['register-name'].value;
@@ -232,6 +244,11 @@
                     if (typeof data.totalContributions !== 'number') {
                         data.totalContributions = data.deposit || 0;
                     }
+                    // Sort tickDates by date
+                    data.tickDates = data.tickDates
+                        .map((date, index) => ({ date, index }))
+                        .sort((a, b) => new Date(a.date) - new Date(b.date))
+                        .map(item => item.date);
                     return { id: doc.id, ...data };
                 });
                 renderTable(allContributors);
@@ -293,6 +310,7 @@
                         <div class="flex space-x-1 mt-1">
                             <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
+                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Record</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -319,19 +337,18 @@
                 headerRow.appendChild(th);
             }
         }
-       function generateCheckboxes(tickDates, totalDays) {
-    return Array.from({ length: totalDays }, (_, i) => {
-        const hasTick = tickDates[i] !== undefined;
-        const dateText = typeof tickDates[i] === 'string' ? tickDates[i] : '';
-        return `
-            <td class="border px-2 py-1 text-center">
-                <input type="checkbox" disabled ${hasTick ? 'checked' : ''} />
-                ${dateText ? `<div class="text-xs text-green-500">${dateText}</div>` : ''}
-            </td>
-        `;
-    }).join('');
-}
-
+        function generateCheckboxes(tickDates, totalDays) {
+            return Array.from({ length: totalDays }, (_, i) => {
+                const hasTick = tickDates[i] !== undefined;
+                const dateText = typeof tickDates[i] === 'string' ? tickDates[i] : '';
+                return `
+                    <td class="border px-2 py-1 text-center">
+                        <input type="checkbox" disabled ${hasTick ? 'checked' : ''} />
+                        ${dateText ? `<div class="text-xs text-green-500">${dateText}</div>` : ''}
+                    </td>
+                `;
+            }).join('');
+        }
 
         showModalBtn.addEventListener('click', () => { document.getElementById('contributor-modal').classList.remove('hidden'); });
         document.getElementById('close-modal-btn').addEventListener('click', () => { document.getElementById('contributor-modal').classList.add('hidden'); });
@@ -350,7 +367,7 @@
                 month: this.elements['month'].value,
                 regAmount,
                 deposit,
-                totalContributions: deposit, // Initialize totalContributions with initial deposit
+                totalContributions: deposit,
                 withdrawals: [],
                 tickDates
             };
@@ -365,17 +382,21 @@
                 const contributor = allContributors.find(c => c.id === contributorId);
                 if (!contributor) return;
                 if (e.target.classList.contains('add-btn')) {
-                    showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount) => {
+                    showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount, selectedDate) => {
                         const newDeposit = contributor.deposit + amount;
                         const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
                         const prevTicks = contributor.tickDates.length;
                         const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
                         const additionalTicks = totalTicks - prevTicks;
                         let newTickDates = [...contributor.tickDates];
-                        const todayStr = getCurrentDateStr();
+                        const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
                         for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
-                            newTickDates[i] = todayStr;
+                            newTickDates[i] = dateStr;
                         }
+                        newTickDates = newTickDates
+                            .map((date, index) => ({ date, index }))
+                            .sort((a, b) => new Date(a.date) - new Date(b.date))
+                            .map(item => item.date);
                         updateContributor(contributorId, {
                             deposit: newDeposit,
                             totalContributions: newTotalContributions,
@@ -421,7 +442,7 @@
 
     <!-- --- Main Application UI (Hidden by default) --- -->
     <div id="app-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;"> JANUARY CONTRIBUTION BOOK </h1>
+        <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;"> JANUARY CONTRIBUTION BOOK</h1>
         <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
         <div class="flex justify-between items-center mb-6">
             <h1 style=" font-family: 'Courier New', Courier, monospace;" >JANUARY CONTRIBUTION BOOK</h1>
@@ -546,7 +567,8 @@
                 </button>
             </div>
             <div class="flex flex-col gap-4">
-                <input type="number" id="custom-input-modal-input" class="border px-4 py-2 rounded-lg" />
+                <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" />
+                <input type="date" id="custom-input-modal-date" class="border px-4 py-2 rounded-lg" />
                 <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
             </div>
         </div>
