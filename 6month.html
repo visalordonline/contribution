@@ -232,6 +232,7 @@
             if (!userId) return;
             const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
+                // --- FIX: Ensure all contributors are loaded! ---
                 allContributors = snapshot.docs.map(doc => {
                     let data = doc.data();
                     if (!Array.isArray(data.tickDates)) {
@@ -251,6 +252,7 @@
                         .map(item => item.date);
                     return { id: doc.id, ...data };
                 });
+                console.log('Loaded contributors:', allContributors); // Debug
                 renderTable(allContributors);
                 if (allContributors.length > 0) tableContainer.classList.remove('hidden');
             }, (error) => {
