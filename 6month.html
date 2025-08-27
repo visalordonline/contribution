@@ -46,10 +46,12 @@
         const showModalBtn = document.getElementById('show-modal-btn');
         const logoutBtn = document.getElementById('logout-btn');
         const searchBar = document.getElementById('search-bar');
+        const searchMonth = document.getElementById('search-month');
         const customInputModal = document.getElementById('custom-input-modal');
         const customInputModalTitle = document.getElementById('custom-input-modal-title');
         const customInputModalInput = document.getElementById('custom-input-modal-input');
         const customInputModalDate = document.getElementById('custom-input-modal-date');
+        const customInputModalReason = document.getElementById('custom-input-modal-reason');
         const customInputModalBtn = document.getElementById('custom-input-modal-btn');
         const messageModal = document.getElementById('message-modal');
         const messageModalText = document.getElementById('message-modal-text');
@@ -61,6 +63,8 @@
         const confirmationModalText = document.getElementById('confirmation-modal-text');
         const confirmationModalYesBtn = document.getElementById('confirmation-modal-yes');
         const confirmationModalNoBtn = document.getElementById('confirmation-modal-no');
+        const historyModal = document.getElementById('history-modal');
+        const historyModalText = document.getElementById('history-modal-text');
 
         // --- Helper function to get date string ---
         function getCurrentDateStr() {
@@ -119,6 +123,7 @@
             document.getElementById('forgot-password-form-div').classList.add('hidden');
             document.getElementById(formId).classList.remove('hidden');
         }
+
         document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
         document.querySelectorAll('.show-register-link').forEach(link => link.addEventListener('click', () => showAuthForm('register-form-div')));
         document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
@@ -128,16 +133,19 @@
             messageModalText.textContent = text;
             messageModal.classList.remove('hidden');
         }
-        function showInputModal(title, placeholder, buttonText, callback) {
+
+        function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
             customInputModalTitle.textContent = title;
             customInputModalInput.placeholder = placeholder;
-            customInputModalInput.value = '';
-            customInputModalDate.value = formatDateForInput(getCurrentDateStr());
+            customInputModalInput.value = defaultAmount;
+            customInputModalDate.value = defaultDate || formatDateForInput(getCurrentDateStr());
+            customInputModalReason.value = '';
             customInputModalBtn.textContent = buttonText;
             customInputModal.classList.remove('hidden');
             const submitHandler = () => {
                 const amount = parseFloat(customInputModalInput.value);
                 const selectedDate = customInputModalDate.value;
+                const reason = customInputModalReason.value.trim() || 'No reason provided';
                 if (isNaN(amount) || amount <= 0) {
                     showMessage('Error', 'Please enter a valid positive number.');
                     return;
@@ -146,12 +154,27 @@
                     showMessage('Error', 'Please select a valid date.');
                     return;
                 }
-                callback(amount, selectedDate);
+                callback(amount, selectedDate, reason);
                 customInputModal.classList.add('hidden');
                 customInputModalBtn.removeEventListener('click', submitHandler);
             };
             customInputModalBtn.addEventListener('click', submitHandler);
         }
+
+        function showHistoryModal(history) {
+            historyModalText.innerHTML = history.length > 0
+                ? history.map(h => `
+                    <div class="border-b py-2">
+                        <p><strong>Date:</strong> ${h.date}</p>
+                        <p><strong>Old Amount:</strong> ₦${h.oldAmount.toFixed(2)}</p>
+                        <p><strong>New Amount:</strong> ₦${h.newAmount.toFixed(2)}</p>
+                        <p><strong>Reason:</strong> ${h.reason}</p>
+                    </div>
+                `).join('')
+                : '<p>No correction history available.</p>';
+            historyModal.classList.remove('hidden');
+        }
+
         function showConfirmationModal(title, text, onConfirm) {
             confirmationModalTitle.textContent = title;
             confirmationModalText.textContent = text;
@@ -170,13 +193,16 @@
             confirmationModalYesBtn.addEventListener('click', handleYes);
             confirmationModalNoBtn.addEventListener('click', handleNo);
         }
+
         document.getElementById('message-modal-close').addEventListener('click', () => { messageModal.classList.add('hidden'); });
         document.getElementById('custom-input-modal-close').addEventListener('click', () => { customInputModal.classList.add('hidden'); });
         document.getElementById('confirmation-modal-close').addEventListener('click', () => { confirmationModal.classList.add('hidden'); });
+        document.getElementById('history-modal-close').addEventListener('click', () => { historyModal.classList.add('hidden'); });
         document.getElementById('message-modal').addEventListener('click', function(e) { if (e.target === messageModal) { messageModal.classList.add('hidden'); } });
         document.getElementById('custom-input-modal').addEventListener('click', function(e) { if (e.target === customInputModal) { customInputModal.classList.add('hidden'); } });
         document.getElementById('confirmation-modal').addEventListener('click', function(e) { if (e.target === confirmationModal) { confirmationModal.classList.add('hidden'); } });
         document.getElementById('contributor-modal').addEventListener('click', function(e) { if (e.target === document.getElementById('contributor-modal')) { document.getElementById('contributor-modal').classList.add('hidden'); } });
+        document.getElementById('history-modal').addEventListener('click', function(e) { if (e.target === historyModal) { historyModal.classList.add('hidden'); } });
 
         // --- Authentication Form Logic ---
         loginForm.addEventListener('submit', async (e) => {
@@ -232,7 +258,6 @@
             if (!userId) return;
             const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
-                // --- FIX: Ensure all contributors are loaded! ---
                 allContributors = snapshot.docs.map(doc => {
                     let data = doc.data();
                     if (!Array.isArray(data.tickDates)) {
@@ -242,17 +267,19 @@
                     if (!Array.isArray(data.withdrawals)) {
                         data.withdrawals = [];
                     }
+                    if (!Array.isArray(data.correctionHistory)) {
+                        data.correctionHistory = [];
+                    }
                     if (typeof data.totalContributions !== 'number') {
                         data.totalContributions = data.deposit || 0;
                     }
-                    // Sort tickDates by date
                     data.tickDates = data.tickDates
                         .map((date, index) => ({ date, index }))
                         .sort((a, b) => new Date(a.date) - new Date(b.date))
                         .map(item => item.date);
                     return { id: doc.id, ...data };
                 });
-                console.log('Loaded contributors:', allContributors); // Debug
+                console.log('Loaded contributors:', allContributors);
                 renderTable(allContributors);
                 if (allContributors.length > 0) tableContainer.classList.remove('hidden');
             }, (error) => {
@@ -263,7 +290,7 @@
             if (!userId) return;
             try {
                 const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
-                await addDoc(contributorsCollectionRef, data);
+                await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [] });
                 showMessage('Success', 'Contributor added successfully!');
             } catch (error) {
                 showMessage('Error', `Failed to add contributor: ${error.message}`);
@@ -301,6 +328,7 @@
             contributors.forEach(contributor => {
                 const withdrawals = contributor.withdrawals;
                 const tickDates = contributor.tickDates;
+                const isLowDeposit = contributor.deposit < contributor.regAmount;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="border px-4 py-2">${contributor.name}</td>
@@ -308,10 +336,13 @@
                     <td class="border px-4 py-2">${contributor.month}</td>
                     <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
                     <td class="border px-4 py-2">
-                        <div class="font-semibold">₦${contributor.deposit.toFixed(2)}</div>
+                        <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
+                        ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
                         <div class="flex space-x-1 mt-1">
                             <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
+                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded correct-btn" data-id="${contributor.id}">Correct</button>
+                            <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}">History</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -370,7 +401,8 @@
                 deposit,
                 totalContributions: deposit,
                 withdrawals: [],
-                tickDates
+                tickDates,
+                correctionHistory: []
             };
             addContributor(newContributor);
             this.reset();
@@ -378,7 +410,7 @@
         });
 
         document.addEventListener('click', function (e) {
-            if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('delete-btn')) {
+            if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('correct-btn') || e.target.classList.contains('history-btn') || e.target.classList.contains('delete-btn')) {
                 const contributorId = e.target.getAttribute('data-id');
                 const contributor = allContributors.find(c => c.id === contributorId);
                 if (!contributor) return;
@@ -422,6 +454,42 @@
                             withdrawals: newWithdrawals
                         });
                     });
+                } else if (e.target.classList.contains('correct-btn')) {
+                    showInputModal('Correct Deposit', 'Enter corrected deposit amount', 'Correct', (correctedDeposit, selectedDate, reason) => {
+                        if (correctedDeposit < 0) {
+                            showMessage('Error', 'Corrected deposit cannot be negative.');
+                            return;
+                        }
+                        const withdrawalTotal = contributor.withdrawals.reduce((sum, w) => sum + w.amount, 0);
+                        if (correctedDeposit < withdrawalTotal) {
+                            showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.');
+                            return;
+                        }
+                        const newTotalContributions = correctedDeposit + withdrawalTotal;
+                        const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
+                        let newTickDates = [];
+                        const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                        for (let i = 0; i < totalTicks; i++) {
+                            newTickDates[i] = dateStr;
+                        }
+                        const newCorrectionHistory = [
+                            ...contributor.correctionHistory,
+                            {
+                                oldAmount: contributor.deposit,
+                                newAmount: correctedDeposit,
+                                date: dateStr,
+                                reason
+                            }
+                        ];
+                        updateContributor(contributorId, {
+                            deposit: correctedDeposit,
+                            totalContributions: newTotalContributions,
+                            tickDates: newTickDates,
+                            correctionHistory: newCorrectionHistory
+                        });
+                    }, contributor.deposit.toFixed(2), formatDateForInput(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr()));
+                } else if (e.target.classList.contains('history-btn')) {
+                    showHistoryModal(contributor.correctionHistory);
                 } else if (e.target.classList.contains('delete-btn')) {
                     showConfirmationModal('Confirm Deletion', 'Are you sure you want to delete this contributor? This action cannot be undone.', () => {
                         deleteContributor(contributorId);
@@ -430,23 +498,79 @@
             }
         });
 
-        searchBar.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredContributors = allContributors.filter(contributor =>
-                contributor.name.toLowerCase().includes(searchTerm) ||
-                contributor.regNo.toLowerCase().includes(searchTerm)
-            );
+        function filterContributors() {
+            const searchTerm = searchBar.value.toLowerCase();
+            const selectedMonth = searchMonth.value;
+            let filteredContributors = allContributors;
+
+            if (searchTerm) {
+                filteredContributors = filteredContributors.filter(contributor =>
+                    contributor.name.toLowerCase().includes(searchTerm) ||
+                    contributor.regNo.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (selectedMonth) {
+                filteredContributors = filteredContributors.filter(contributor =>
+                    contributor.month.toLowerCase() === selectedMonth.toLowerCase()
+                );
+            }
+
             renderTable(filteredContributors);
-        });
+        }
+
+        searchBar.addEventListener('input', filterContributors);
+        searchMonth.addEventListener('change', filterContributors);
+
         window.onload = initializeFirebase;
     </script>
+
+    <!-- --- Login Container --- -->
+    <div id="login-container" class="w-full max-w-md">
+        <div id="login-form-div" class="bg-white p-8 rounded-lg shadow-2xl">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Login</h2>
+            <form id="login-form" class="grid grid-cols-1 gap-4">
+                <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
+                <p class="text-center text-sm text-gray-600">
+                    Don't have an account? <a href="#" class="show-register-link text-blue-600 hover:underline">Register</a>
+                </p>
+                <p class="text-center text-sm text-gray-600">
+                    Forgot password? <a href="#" class="show-forgot-password-link text-blue-600 hover:underline">Reset Password</a>
+                </p>
+            </form>
+        </div>
+        <div id="register-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Register</h2>
+            <form id="register-form" class="grid grid-cols-1 gap-4">
+                <input type="text" id="register-name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
+                <input type="email" id="register-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                <input type="password" id="register-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Register</button>
+                <p class="text-center text-sm text-gray-600">
+                    Already have an account? <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
+                </p>
+            </form>
+        </div>
+        <div id="forgot-password-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Reset Password</h2>
+            <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
+                <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Send Reset Email</button>
+                <p class="text-center text-sm text-gray-600">
+                    Back to <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
+                </p>
+            </form>
+        </div>
+    </div>
 
     <!-- --- Main Application UI (Hidden by default) --- -->
     <div id="app-container" class="hidden w-full max-w-7xl">
         <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;"> 6 MONTH CONTRIBUTION BOOK </h1>
         <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
         <div class="flex justify-between items-center mb-6">
-            <h1 style=" font-family: 'Courier New', Courier, monospace;" >6 MONTH CONTRIBUTION BOOK</h1>
+            <h1 style="font-family: 'Courier New', Courier, monospace;">6 MONTH CONTRIBUTION BOOK</h1>
             <div class="flex space-x-4">
                 <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Add New Contributor
@@ -457,8 +581,23 @@
             </div>
         </div>
         <div id="table-container">
-            <div class="mb-6">
+            <div class="mb-6 flex space-x-4">
                 <input type="text" id="search-bar" placeholder="Search by Name or Reg No..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                <select id="search-month" class="border px-4 py-2 rounded-lg">
+                    <option value="">All Months</option>
+                    <option>January</option>
+                    <option>February</option>
+                    <option>March</option>
+                    <option>April</option>
+                    <option>May</option>
+                    <option>June</option>
+                    <option>July</option>
+                    <option>August</option>
+                    <option>September</option>
+                    <option>October</option>
+                    <option>November</option>
+                    <option>December</option>
+                </select>
             </div>
             <div class="overflow-x-auto rounded-lg shadow-md">
                 <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
@@ -516,46 +655,6 @@
         </div>
     </div>
 
-    <!-- --- Authentication UI (Visible by default) --- -->
-    <div id="login-container" class="w-full max-w-md mx-auto p-8 bg-white rounded-xl shadow-lg">
-        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">6 MONTH CONTRIBUTION BOOK</h1>
-        <div id="auth-forms" class="flex flex-col gap-6">
-            <!-- Login Form -->
-            <div id="login-form-div">
-                <h2 class="text-2xl font-bold mb-4 text-center">Login</h2>
-                <form id="login-form" class="grid grid-cols-1 gap-4">
-                    <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                    <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                    <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
-                </form>
-                <div class="flex justify-between text-sm mt-4">
-                    <a class="show-register-link text-blue-600 hover:underline cursor-pointer">Create an account</a>
-                    <a class="show-forgot-password-link text-blue-600 hover:underline cursor-pointer">Forgot Password?</a>
-                </div>
-            </div>
-            <!-- Register Form (hidden) -->
-            <div id="register-form-div" class="hidden">
-                <h2 class="text-2xl font-bold mb-4 text-center">Create Account</h2>
-                <form id="register-form" class="grid grid-cols-1 gap-4">
-                    <input type="text" id="register-name" placeholder="Your Name" required class="border px-4 py-2 rounded-lg" />
-                    <input type="email" id="register-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                    <input type="password" id="register-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                    <button type="submit" class="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300">Register</button>
-                </form>
-                <p class="text-sm text-center mt-4">Already have an account? <a class="show-login-link text-blue-600 hover:underline cursor-pointer">Login here.</a></p>
-            </div>
-            <!-- Forgot Password Form (hidden) -->
-            <div id="forgot-password-form-div" class="hidden">
-                <h2 class="text-2xl font-bold mb-4 text-center">Forgot Password</h2>
-                <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
-                    <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                    <button type="submit" class="bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-yellow-700 transition duration-300">Send Reset Email</button>
-                </form>
-                <p class="text-sm text-center mt-4"><a class="show-login-link text-blue-600 hover:underline cursor-pointer">Back to Login</a></p>
-            </div>
-        </div>
-    </div>
-
     <!-- --- Custom Modal for Input (replaces prompt) --- -->
     <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
@@ -570,10 +669,12 @@
             <div class="flex flex-col gap-4">
                 <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" />
                 <input type="date" id="custom-input-modal-date" class="border px-4 py-2 rounded-lg" />
+                <input type="text" id="custom-input-modal-reason" placeholder="Reason for correction (optional)" class="border px-4 py-2 rounded-lg" />
                 <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
             </div>
         </div>
     </div>
+
     <!-- --- Custom Modal for Messages (replaces alert) --- -->
     <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
@@ -588,6 +689,7 @@
             <p id="message-modal-text" class="text-gray-700"></p>
         </div>
     </div>
+
     <!-- --- Confirmation Modal --- -->
     <div id="confirmation-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
@@ -604,6 +706,21 @@
                 <button id="confirmation-modal-no" class="bg-gray-400 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-500 transition duration-300">No</button>
                 <button id="confirmation-modal-yes" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300">Yes</button>
             </div>
+        </div>
+    </div>
+
+    <!-- --- History Modal --- -->
+    <div id="history-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Correction History</h3>
+                <button id="history-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="history-modal-text" class="text-gray-700"></div>
         </div>
     </div>
 </body>
