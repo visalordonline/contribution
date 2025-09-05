@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>JANUARY CONTRIBUTION BOOK</title>
+    <title>JANUARY CONTRIBUTION BOOK</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
@@ -16,7 +16,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase config
@@ -86,15 +86,14 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                await signInAnonymously(auth);
-
                 onAuthStateChanged(auth, async (user) => {
+                    console.log('Auth state changed:', user);
                     if (user) {
                         userId = user.uid;
                         const userDocRef = doc(db, "users", userId);
                         const userDocSnap = await getDoc(userDocRef);
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
-                        dashboardName.textContent = userName ? `Welcome, ${userName}` : "";
+                        dashboardName.textContent = userName ? `Welcome, ${userName}` : "Welcome";
                         loginContainer.classList.add('hidden');
                         appContainer.classList.remove('hidden');
                         setupFirestoreListener();
@@ -127,11 +126,14 @@
         document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
         document.querySelectorAll('.show-register-link').forEach(link => link.addEventListener('click', () => showAuthForm('register-form-div')));
         document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
-        
+
         function showMessage(title, text) {
             document.getElementById('message-modal-title').textContent = title;
             messageModalText.textContent = text;
             messageModal.classList.remove('hidden');
+            setTimeout(() => {
+                messageModal.classList.add('hidden');
+            }, 3000); // Auto-close after 3 seconds
         }
 
         function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
@@ -210,10 +212,17 @@
             const email = loginForm['login-email'].value;
             const password = loginForm['login-password'].value;
             try {
+                loginForm.querySelector('button').disabled = true;
+                loginForm.querySelector('button').textContent = 'Logging in...';
                 await signInWithEmailAndPassword(auth, email, password);
                 showMessage('Success', 'Logged in successfully!');
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
             } catch (error) {
                 showMessage('Error', `Login failed: ${error.message}`);
+            } finally {
+                loginForm.querySelector('button').disabled = false;
+                loginForm.querySelector('button').textContent = 'Login';
             }
         });
 
@@ -223,13 +232,20 @@
             const email = registerForm['register-email'].value;
             const password = registerForm['register-password'].value;
             try {
+                registerForm.querySelector('button').disabled = true;
+                registerForm.querySelector('button').textContent = 'Registering...';
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 userId = user.uid;
                 await setDoc(doc(db, "users", user.uid), { name: name, email: email });
                 showMessage('Success', 'Account created successfully! You are now logged in.');
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
             } catch (error) {
                 showMessage('Error', `Registration failed: ${error.message}`);
+            } finally {
+                registerForm.querySelector('button').disabled = false;
+                registerForm.querySelector('button').textContent = 'Register';
             }
         });
 
@@ -237,19 +253,29 @@
             e.preventDefault();
             const email = forgotPasswordForm['forgot-password-email'].value;
             try {
+                forgotPasswordForm.querySelector('button').disabled = true;
+                forgotPasswordForm.querySelector('button').textContent = 'Sending...';
                 await sendPasswordResetEmail(auth, email);
                 showMessage('Success', 'Password reset email sent. Check your inbox.');
             } catch (error) {
                 showMessage('Error', `Password reset failed: ${error.message}`);
+            } finally {
+                forgotPasswordForm.querySelector('button').disabled = false;
+                forgotPasswordForm.querySelector('button').textContent = 'Send Reset Email';
             }
         });
 
         logoutBtn.addEventListener('click', async () => {
             try {
+                logoutBtn.disabled = true;
+                logoutBtn.textContent = 'Logging out...';
                 await signOut(auth);
                 showMessage('Success', 'Logged out successfully!');
             } catch (error) {
                 showMessage('Error', `Logout failed: ${error.message}`);
+            } finally {
+                logoutBtn.disabled = false;
+                logoutBtn.textContent = 'Logout';
             }
         });
 
@@ -258,6 +284,7 @@
             if (!userId) return;
             const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
+                console.log('Firestore snapshot received:', snapshot.docs.length);
                 allContributors = snapshot.docs.map(doc => {
                     let data = doc.data();
                     if (!Array.isArray(data.tickDates)) {
@@ -286,31 +313,43 @@
                 showMessage('Error', 'Failed to load data from the database.');
             });
         }
+
         async function addContributor(data) {
             if (!userId) return;
             try {
+                showModalBtn.disabled = true;
+                showModalBtn.textContent = 'Adding...';
                 const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
                 await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [] });
                 showMessage('Success', 'Contributor added successfully!');
+                filterContributors();
             } catch (error) {
                 showMessage('Error', `Failed to add contributor: ${error.message}`);
+            } finally {
+                showModalBtn.disabled = false;
+                showModalBtn.textContent = 'Add New Contributor';
             }
         }
+
         async function updateContributor(id, data) {
             if (!userId) return;
             try {
                 const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
                 await updateDoc(contributorDocRef, data);
+                showMessage('Success', 'Contributor updated successfully!');
+                filterContributors();
             } catch (error) {
                 showMessage('Error', `Failed to update contributor: ${error.message}`);
             }
         }
+
         async function deleteContributor(id) {
             if (!userId) return;
             try {
                 const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
                 await deleteDoc(contributorDocRef);
                 showMessage('Success', 'Contributor deleted successfully!');
+                filterContributors();
             } catch (error) {
                 showMessage('Error', `Failed to delete contributor: ${error.message}`);
             }
@@ -359,6 +398,7 @@
                 contributorTableBody.appendChild(row);
             });
         }
+
         function updateHeaderDays(newMaxDays) {
             const headerRow = document.getElementById('table-header-row');
             while (headerRow.children.length > 8) headerRow.removeChild(headerRow.lastChild);
@@ -369,6 +409,7 @@
                 headerRow.appendChild(th);
             }
         }
+
         function generateCheckboxes(tickDates, totalDays) {
             return Array.from({ length: totalDays }, (_, i) => {
                 const hasTick = tickDates[i] !== undefined;
@@ -385,10 +426,14 @@
         showModalBtn.addEventListener('click', () => { document.getElementById('contributor-modal').classList.remove('hidden'); });
         document.getElementById('close-modal-btn').addEventListener('click', () => { document.getElementById('contributor-modal').classList.add('hidden'); });
 
-        document.getElementById('contributor-form').addEventListener('submit', function (e) {
+        document.getElementById('contributor-form').addEventListener('submit', async function (e) {
             e.preventDefault();
             const regAmount = parseFloat(this.elements['reg-amount'].value);
             const deposit = parseFloat(this.elements['deposit'].value);
+            if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
+                showMessage('Error', 'Please enter valid positive numbers for Registration Amount and Deposit.');
+                return;
+            }
             const daysTicked = Math.floor(deposit / regAmount);
             const tickDates = [];
             const todayStr = getCurrentDateStr();
@@ -404,9 +449,18 @@
                 tickDates,
                 correctionHistory: []
             };
-            addContributor(newContributor);
-            this.reset();
-            document.getElementById('contributor-modal').classList.add('hidden');
+            try {
+                this.querySelector('button').disabled = true;
+                this.querySelector('button').textContent = 'Adding...';
+                await addContributor(newContributor);
+                this.reset();
+                document.getElementById('contributor-modal').classList.add('hidden');
+            } catch (error) {
+                showMessage('Error', `Failed to add contributor: ${error.message}`);
+            } finally {
+                this.querySelector('button').disabled = false;
+                this.querySelector('button').textContent = 'Add Entry';
+            }
         });
 
         document.addEventListener('click', function (e) {
@@ -567,10 +621,10 @@
 
     <!-- --- Main Application UI (Hidden by default) --- -->
     <div id="app-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-gray-800" style="color: blue; margin-top: 10px;"> JANUARY CONTRIBUTION BOOK</h1>
+        <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;">JANUARY CONTRIBUTION BOOK</h1>
         <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
         <div class="flex justify-between items-center mb-6">
-            <h1 style="font-family: 'Courier New', Courier, monospace;">JANUARY CONTRIBUTION BOOK</h1>
+            <div></div> <!-- Placeholder to maintain layout -->
             <div class="flex space-x-4">
                 <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Add New Contributor
@@ -648,8 +702,8 @@
                     <option>November</option>
                     <option>December</option>
                 </select>
-                <input type="number" id="reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" />
-                <input type="number" id="deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" />
+                <input type="number" id="reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+                <input type="number" id="deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
                 <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Add Entry</button>
             </form>
         </div>
@@ -667,7 +721,7 @@
                 </button>
             </div>
             <div class="flex flex-col gap-4">
-                <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" />
+                <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
                 <input type="date" id="custom-input-modal-date" class="border px-4 py-2 rounded-lg" />
                 <input type="text" id="custom-input-modal-reason" placeholder="Reason for correction (optional)" class="border px-4 py-2 rounded-lg" />
                 <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
