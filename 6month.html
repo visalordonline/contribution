@@ -47,12 +47,6 @@
         const logoutBtn = document.getElementById('logout-btn');
         const searchBar = document.getElementById('search-bar');
         const searchMonth = document.getElementById('search-month');
-        const customInputModal = document.getElementById('custom-input-modal');
-        const customInputModalTitle = document.getElementById('custom-input-modal-title');
-        const customInputModalInput = document.getElementById('custom-input-modal-input');
-        const customInputModalDate = document.getElementById('custom-input-modal-date');
-        const customInputModalReason = document.getElementById('custom-input-modal-reason');
-        const customInputModalBtn = document.getElementById('custom-input-modal-btn');
         const messageModal = document.getElementById('message-modal');
         const messageModalText = document.getElementById('message-modal-text');
         const loginForm = document.getElementById('login-form');
@@ -136,33 +130,6 @@
             }, 3000); // Auto-close after 3 seconds
         }
 
-        function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
-            customInputModalTitle.textContent = title;
-            customInputModalInput.placeholder = placeholder;
-            customInputModalInput.value = defaultAmount;
-            customInputModalDate.value = defaultDate || formatDateForInput(getCurrentDateStr());
-            customInputModalReason.value = '';
-            customInputModalBtn.textContent = buttonText;
-            customInputModal.classList.remove('hidden');
-            const submitHandler = () => {
-                const amount = parseFloat(customInputModalInput.value);
-                const selectedDate = customInputModalDate.value;
-                const reason = customInputModalReason.value.trim() || 'No reason provided';
-                if (isNaN(amount) || amount <= 0) {
-                    showMessage('Error', 'Please enter a valid positive number.');
-                    return;
-                }
-                if (!selectedDate) {
-                    showMessage('Error', 'Please select a valid date.');
-                    return;
-                }
-                callback(amount, selectedDate, reason);
-                customInputModal.classList.add('hidden');
-                customInputModalBtn.removeEventListener('click', submitHandler);
-            };
-            customInputModalBtn.addEventListener('click', submitHandler);
-        }
-
         function showHistoryModal(history) {
             historyModalText.innerHTML = history.length > 0
                 ? history.map(h => `
@@ -197,11 +164,9 @@
         }
 
         document.getElementById('message-modal-close').addEventListener('click', () => { messageModal.classList.add('hidden'); });
-        document.getElementById('custom-input-modal-close').addEventListener('click', () => { customInputModal.classList.add('hidden'); });
         document.getElementById('confirmation-modal-close').addEventListener('click', () => { confirmationModal.classList.add('hidden'); });
         document.getElementById('history-modal-close').addEventListener('click', () => { historyModal.classList.add('hidden'); });
         document.getElementById('message-modal').addEventListener('click', function(e) { if (e.target === messageModal) { messageModal.classList.add('hidden'); } });
-        document.getElementById('custom-input-modal').addEventListener('click', function(e) { if (e.target === customInputModal) { customInputModal.classList.add('hidden'); } });
         document.getElementById('confirmation-modal').addEventListener('click', function(e) { if (e.target === confirmationModal) { confirmationModal.classList.add('hidden'); } });
         document.getElementById('contributor-modal').addEventListener('click', function(e) { if (e.target === document.getElementById('contributor-modal')) { document.getElementById('contributor-modal').classList.add('hidden'); } });
         document.getElementById('history-modal').addEventListener('click', function(e) { if (e.target === historyModal) { historyModal.classList.add('hidden'); } });
@@ -237,7 +202,7 @@
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 userId = user.uid;
-                await setDoc(doc(db, "users", user.uid), { name: name, email: email });
+                await setDoc(doc(db, "users", user.uid), { name: name, email: email, isAdmin: false });
                 showMessage('Success', 'Account created successfully! You are now logged in.');
                 loginContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
@@ -282,7 +247,7 @@
         // --- Firestore Data Handling ---
         function setupFirestoreListener() {
             if (!userId) return;
-            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
+            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/sixmonthcontributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
                 console.log('Firestore snapshot received:', snapshot.docs.length);
                 allContributors = snapshot.docs.map(doc => {
@@ -319,11 +284,12 @@
             try {
                 showModalBtn.disabled = true;
                 showModalBtn.textContent = 'Adding...';
-                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
+                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/sixmonthcontributors`);
                 await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [] });
                 showMessage('Success', 'Contributor added successfully!');
                 filterContributors();
             } catch (error) {
+                console.error('Error adding contributor:', error);
                 showMessage('Error', `Failed to add contributor: ${error.message}`);
             } finally {
                 showModalBtn.disabled = false;
@@ -334,7 +300,7 @@
         async function updateContributor(id, data) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/sixmonthcontributors`, id);
                 await updateDoc(contributorDocRef, data);
                 showMessage('Success', 'Contributor updated successfully!');
                 filterContributors();
@@ -346,7 +312,7 @@
         async function deleteContributor(id) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/sixmonthcontributors`, id);
                 await deleteDoc(contributorDocRef);
                 showMessage('Success', 'Contributor deleted successfully!');
                 filterContributors();
@@ -378,10 +344,9 @@
                         <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
                         ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
                         <div class="flex space-x-1 mt-1">
-                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
-                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded correct-btn" data-id="${contributor.id}">Correct</button>
                             <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}">History</button>
+                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Delete</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -464,7 +429,7 @@
         });
 
         document.addEventListener('click', function (e) {
-            if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('correct-btn') || e.target.classList.contains('history-btn') || e.target.classList.contains('delete-btn')) {
+            if (e.target.classList.contains('add-btn') || e.target.classList.contains('history-btn') || e.target.classList.contains('delete-btn')) {
                 const contributorId = e.target.getAttribute('data-id');
                 const contributor = allContributors.find(c => c.id === contributorId);
                 if (!contributor) return;
@@ -490,58 +455,6 @@
                             tickDates: newTickDates
                         });
                     });
-                } else if (e.target.classList.contains('withdraw-btn')) {
-                    showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
-                        if (amount > contributor.deposit) {
-                            showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
-                            return;
-                        }
-                        const withdrawals = contributor.withdrawals;
-                        if (withdrawals.length >= 3) {
-                            showMessage('Error', 'Maximum of 3 withdrawals reached.');
-                            return;
-                        }
-                        const newDeposit = contributor.deposit - amount;
-                        const newWithdrawals = [...withdrawals, { amount, date: getCurrentDateStr() }];
-                        updateContributor(contributorId, {
-                            deposit: newDeposit,
-                            withdrawals: newWithdrawals
-                        });
-                    });
-                } else if (e.target.classList.contains('correct-btn')) {
-                    showInputModal('Correct Deposit', 'Enter corrected deposit amount', 'Correct', (correctedDeposit, selectedDate, reason) => {
-                        if (correctedDeposit < 0) {
-                            showMessage('Error', 'Corrected deposit cannot be negative.');
-                            return;
-                        }
-                        const withdrawalTotal = contributor.withdrawals.reduce((sum, w) => sum + w.amount, 0);
-                        if (correctedDeposit < withdrawalTotal) {
-                            showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.');
-                            return;
-                        }
-                        const newTotalContributions = correctedDeposit + withdrawalTotal;
-                        const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
-                        let newTickDates = [];
-                        const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
-                        for (let i = 0; i < totalTicks; i++) {
-                            newTickDates[i] = dateStr;
-                        }
-                        const newCorrectionHistory = [
-                            ...contributor.correctionHistory,
-                            {
-                                oldAmount: contributor.deposit,
-                                newAmount: correctedDeposit,
-                                date: dateStr,
-                                reason
-                            }
-                        ];
-                        updateContributor(contributorId, {
-                            deposit: correctedDeposit,
-                            totalContributions: newTotalContributions,
-                            tickDates: newTickDates,
-                            correctionHistory: newCorrectionHistory
-                        });
-                    }, contributor.deposit.toFixed(2), formatDateForInput(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr()));
                 } else if (e.target.classList.contains('history-btn')) {
                     showHistoryModal(contributor.correctionHistory);
                 } else if (e.target.classList.contains('delete-btn')) {
@@ -551,6 +464,36 @@
                 }
             }
         });
+
+        function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
+            const customInputModal = document.getElementById('custom-input-modal');
+            const customInputModalTitle = document.getElementById('custom-input-modal-title');
+            const customInputModalInput = document.getElementById('custom-input-modal-input');
+            const customInputModalDate = document.getElementById('custom-input-modal-date');
+            const customInputModalBtn = document.getElementById('custom-input-modal-btn');
+            customInputModalTitle.textContent = title;
+            customInputModalInput.placeholder = placeholder;
+            customInputModalInput.value = defaultAmount;
+            customInputModalDate.value = defaultDate || formatDateForInput(getCurrentDateStr());
+            customInputModalBtn.textContent = buttonText;
+            customInputModal.classList.remove('hidden');
+            const submitHandler = () => {
+                const amount = parseFloat(customInputModalInput.value);
+                const selectedDate = customInputModalDate.value;
+                if (isNaN(amount) || amount <= 0) {
+                    showMessage('Error', 'Please enter a valid positive number.');
+                    return;
+                }
+                if (!selectedDate) {
+                    showMessage('Error', 'Please select a valid date.');
+                    return;
+                }
+                callback(amount, selectedDate);
+                customInputModal.classList.add('hidden');
+                customInputModalBtn.removeEventListener('click', submitHandler);
+            };
+            customInputModalBtn.addEventListener('click', submitHandler);
+        }
 
         function filterContributors() {
             const searchTerm = searchBar.value.toLowerCase();
@@ -723,7 +666,6 @@
             <div class="flex flex-col gap-4">
                 <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
                 <input type="date" id="custom-input-modal-date" class="border px-4 py-2 rounded-lg" />
-                <input type="text" id="custom-input-modal-reason" placeholder="Reason for correction (optional)" class="border px-4 py-2 rounded-lg" />
                 <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
             </div>
         </div>

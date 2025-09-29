@@ -282,7 +282,7 @@
         // --- Firestore Data Handling ---
         function setupFirestoreListener() {
             if (!userId) return;
-            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
+            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailycontributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
                 console.log('Firestore snapshot received:', snapshot.docs.length);
                 allContributors = snapshot.docs.map(doc => {
@@ -314,27 +314,30 @@
             });
         }
 
-        async function addContributor(data) {
-            if (!userId) return;
-            try {
-                showModalBtn.disabled = true;
-                showModalBtn.textContent = 'Adding...';
-                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
-                await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [] });
-                showMessage('Success', 'Contributor added successfully!');
-                filterContributors();
-            } catch (error) {
-                showMessage('Error', `Failed to add contributor: ${error.message}`);
-            } finally {
-                showModalBtn.disabled = false;
-                showModalBtn.textContent = 'Add New Contributor';
-            }
-        }
+         async function addContributor(data) {
+    if (!userId) return;
+    try {
+        showModalBtn.disabled = true;
+        showModalBtn.textContent = 'Adding...';
+        // Update the collection path to match the listener
+        const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailycontributors`);
+        await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [] });
+        showMessage('Success', 'Contributor added successfully!');
+        filterContributors();
+    } catch (error) {
+        console.error('Error adding contributor:', error); // Log the full error for debugging
+        showMessage('Error', `Failed to add contributor: ${error.message}`);
+    } finally {
+        showModalBtn.disabled = false;
+        showModalBtn.textContent = 'Add New Contributor';
+    }
+
+    }
 
         async function updateContributor(id, data) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/dailycontributors`, id);
                 await updateDoc(contributorDocRef, data);
                 showMessage('Success', 'Contributor updated successfully!');
                 filterContributors();

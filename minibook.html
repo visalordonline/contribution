@@ -319,7 +319,7 @@
             try {
                 showModalBtn.disabled = true;
                 showModalBtn.textContent = 'Adding...';
-                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
+                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/minicontributors`);
                 await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [] });
                 showMessage('Success', 'Contributor added successfully!');
                 filterContributors();
@@ -334,7 +334,7 @@
         async function updateContributor(id, data) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/minicontributors`, id);
                 await updateDoc(contributorDocRef, data);
                 showMessage('Success', 'Contributor updated successfully!');
                 filterContributors();
@@ -346,7 +346,7 @@
         async function deleteContributor(id) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/contributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/minicontributors`, id);
                 await deleteDoc(contributorDocRef);
                 showMessage('Success', 'Contributor deleted successfully!');
                 filterContributors();
