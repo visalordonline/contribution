@@ -29,8 +29,8 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, getDocs, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase config
         const firebaseConfig = {
@@ -74,6 +74,7 @@
         const messageModalText = document.getElementById('message-modal-text');
         const loginForm = document.getElementById('login-form');
         const forgotPasswordForm = document.getElementById('forgot-password-form');
+        const signupForm = document.getElementById('signup-form');
         const confirmationModal = document.getElementById('confirmation-modal');
         const confirmationModalTitle = document.getElementById('confirmation-modal-title');
         const confirmationModalText = document.getElementById('confirmation-modal-text');
@@ -136,6 +137,7 @@
                     }
                 });
             } catch (error) {
+                console.error('Initialization error:', error);
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'text-red-500 text-center font-bold';
                 errorDiv.textContent = `Failed to initialize the application: ${error.message}`;
@@ -148,19 +150,23 @@
         function showAuthForm(formId) {
             document.getElementById('login-form-div').classList.add('hidden');
             document.getElementById('forgot-password-form-div').classList.add('hidden');
+            document.getElementById('signup-form-div').classList.add('hidden');
             document.getElementById(formId).classList.remove('hidden');
         }
 
         document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
         document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
+        document.querySelectorAll('.show-signup-link').forEach(link => link.addEventListener('click', () => showAuthForm('signup-form-div')));
 
-        function showMessage(title, text) {
+        function showMessage(title, text, isError = false) {
             document.getElementById('message-modal-title').textContent = title;
             messageModalText.textContent = text;
             messageModal.classList.remove('hidden');
-            setTimeout(() => {
-                messageModal.classList.add('hidden');
-            }, 3000); // Auto-close after 3 seconds
+            if (!isError) {
+                setTimeout(() => {
+                    messageModal.classList.add('hidden');
+                }, 3000);
+            }
         }
 
         function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '', showReason = false) {
@@ -176,11 +182,11 @@
                 const selectedDate = customInputModalDate.value;
                 const reason = showReason ? customInputModalReason.value.trim() || 'No reason provided' : '';
                 if (isNaN(amount) || amount <= 0) {
-                    showMessage('Error', 'Please enter a valid positive number.');
+                    showMessage('Error', 'Please enter a valid positive number.', true);
                     return;
                 }
                 if (!selectedDate) {
-                    showMessage('Error', 'Please select a valid date.');
+                    showMessage('Error', 'Please select a valid date.', true);
                     return;
                 }
                 callback(amount, selectedDate, reason);
@@ -245,7 +251,7 @@
                 loginContainer.classList.add('hidden');
                 appContainer.classList.remove('hidden');
             } catch (error) {
-                showMessage('Error', `Login failed: ${error.message}`);
+                showMessage('Error', `Login failed: ${error.message}`, true);
             } finally {
                 loginForm.querySelector('button').disabled = false;
                 loginForm.querySelector('button').textContent = 'Login';
@@ -261,10 +267,36 @@
                 await sendPasswordResetEmail(auth, email);
                 showMessage('Success', 'Password reset email sent. Check your inbox.');
             } catch (error) {
-                showMessage('Error', `Password reset failed: ${error.message}`);
+                showMessage('Error', `Password reset failed: ${error.message}`, true);
             } finally {
                 forgotPasswordForm.querySelector('button').disabled = false;
                 forgotPasswordForm.querySelector('button').textContent = 'Send Reset Email';
+            }
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = signupForm['signup-name'].value;
+            const email = signupForm['signup-email'].value;
+            const password = signupForm['signup-password'].value;
+            try {
+                signupForm.querySelector('button').disabled = true;
+                signupForm.querySelector('button').textContent = 'Signing up...';
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                await setDoc(doc(db, "users", user.uid), {
+                    name: name,
+                    email: email,
+                    isAdmin: true
+                });
+                showMessage('Success', 'Admin account created successfully!');
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+            } catch (error) {
+                showMessage('Error', `Signup failed: ${error.message}`, true);
+            } finally {
+                signupForm.querySelector('button').disabled = false;
+                signupForm.querySelector('button').textContent = 'Sign Up';
             }
         });
 
@@ -275,7 +307,7 @@
                 await signOut(auth);
                 showMessage('Success', 'Logged out successfully!');
             } catch (error) {
-                showMessage('Error', `Logout failed: ${error.message}`);
+                showMessage('Error', `Logout failed: ${error.message}`, true);
             } finally {
                 logoutBtn.disabled = false;
                 logoutBtn.textContent = 'Logout';
@@ -285,20 +317,24 @@
         // --- Firestore Data Handling ---
         function setupFirestoreListener() {
             if (!userId || !isAdmin) return;
-            // Clear existing listeners
+            console.log('Setting up Firestore listener for collection:', activeCollection);
             unsubscribeListeners.forEach(unsubscribe => unsubscribe());
             unsubscribeListeners = [];
             allContributors = [];
             try {
                 const usersCollectionRef = collection(db, `artifacts/${appId}/users`);
                 getDocs(usersCollectionRef).then(usersSnapshot => {
+                    console.log('Users found:', usersSnapshot.size);
                     usersSnapshot.forEach(userDoc => {
                         const userId = userDoc.id;
                         const userName = userDoc.data().name || "Unknown";
+                        console.log('Processing user:', userId, userName);
                         const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/${activeCollection}`);
                         const unsubscribe = onSnapshot(contributorsCollectionRef, (snapshot) => {
+                            console.log(`Contributors in ${activeCollection} for user ${userId}:`, snapshot.size);
                             const userContributors = snapshot.docs.map(doc => {
                                 let data = doc.data();
+                                console.log('Contributor data:', doc.id, data);
                                 if (!Array.isArray(data.tickDates)) {
                                     const numTicks = Math.floor((data.totalContributions || data.deposit || 0) / (data.regAmount || 1));
                                     data.tickDates = new Array(numTicks).fill(getCurrentDateStr());
@@ -321,18 +357,23 @@
                             allContributors = allContributors
                                 .filter(c => c.userId !== userId)
                                 .concat(userContributors);
+                            console.log('All contributors:', allContributors);
                             renderTable(allContributors);
                             if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+                            else console.log('No contributors to display');
                         }, (error) => {
-                            showMessage('Error', `Failed to load data: ${error.message}`);
+                            console.error('Snapshot error:', error);
+                            showMessage('Error', `Failed to load data: ${error.message}`, true);
                         });
                         unsubscribeListeners.push(unsubscribe);
                     });
                 }).catch(error => {
-                    showMessage('Error', `Failed to load users: ${error.message}`);
+                    console.error('Users fetch error:', error);
+                    showMessage('Error', `Failed to load users: ${error.message}`, true);
                 });
             } catch (error) {
-                showMessage('Error', `Failed to load data: ${error.message}`);
+                console.error('Setup error:', error);
+                showMessage('Error', `Failed to load data: ${error.message}`, true);
             }
         }
 
@@ -344,7 +385,7 @@
                 showMessage('Success', 'Contributor updated successfully!');
                 filterContributors();
             } catch (error) {
-                showMessage('Error', `Failed to update contributor: ${error.message}`);
+                showMessage('Error', `Failed to update contributor: ${error.message}`, true);
             }
         }
 
@@ -356,7 +397,7 @@
                 showMessage('Success', 'Contributor deleted successfully!');
                 filterContributors();
             } catch (error) {
-                showMessage('Error', `Failed to delete contributor: ${error.message}`);
+                showMessage('Error', `Failed to delete contributor: ${error.message}`, true);
             }
         }
 
@@ -449,12 +490,12 @@
                 if (e.target.classList.contains('withdraw-btn')) {
                     showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount, selectedDate) => {
                         if (amount > contributor.deposit) {
-                            showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
+                            showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.', true);
                             return;
                         }
                         const withdrawals = contributor.withdrawals;
                         if (withdrawals.length >= 3) {
-                            showMessage('Error', 'Maximum of 3 withdrawals reached.');
+                            showMessage('Error', 'Maximum of 3 withdrawals reached.', true);
                             return;
                         }
                         const newDeposit = contributor.deposit - amount;
@@ -467,12 +508,12 @@
                 } else if (e.target.classList.contains('correct-btn')) {
                     showInputModal('Correct Deposit', 'Enter corrected deposit amount', 'Correct', (correctedDeposit, selectedDate, reason) => {
                         if (correctedDeposit < 0) {
-                            showMessage('Error', 'Corrected deposit cannot be negative.');
+                            showMessage('Error', 'Corrected deposit cannot be negative.', true);
                             return;
                         }
                         const withdrawalTotal = contributor.withdrawals.reduce((sum, w) => sum + w.amount, 0);
                         if (correctedDeposit < withdrawalTotal) {
-                            showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.');
+                            showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.', true);
                             return;
                         }
                         const newTotalContributions = correctedDeposit + withdrawalTotal;
@@ -547,6 +588,7 @@
             try {
                 const usersCollectionRef = collection(db, `artifacts/${appId}/users`);
                 const usersSnapshot = await getDocs(usersCollectionRef);
+                console.log('Populating user dropdown, users found:', usersSnapshot.size);
                 searchUser.innerHTML = '<option value="">All Users</option>';
                 usersSnapshot.forEach(userDoc => {
                     const userData = userDoc.data();
@@ -556,7 +598,8 @@
                     searchUser.appendChild(option);
                 });
             } catch (error) {
-                showMessage('Error', `Failed to load users: ${error.message}`);
+                console.error('User dropdown error:', error);
+                showMessage('Error', `Failed to load users: ${error.message}`, true);
             }
         }
 
@@ -574,6 +617,9 @@
                 <p class="text-center text-sm text-gray-600">
                     Forgot password? <a href="#" class="show-forgot-password-link text-blue-600 hover:underline">Reset Password</a>
                 </p>
+                <p class="text-center text-sm text-gray-600">
+                    Don't have an account? <a href="#" class="show-signup-link text-blue-600 hover:underline">Sign Up</a>
+                </p>
             </form>
         </div>
         <div id="forgot-password-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
@@ -583,6 +629,21 @@
                 <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Send Reset Email</button>
                 <p class="text-center text-sm text-gray-600">
                     Back to <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
+                </p>
+                <p class="text-center text-sm text-gray-600">
+                    Don't have an account? <a href="#" class="show-signup-link text-blue-600 hover:underline">Sign Up</a>
+                </p>
+            </form>
+        </div>
+        <div id="signup-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">Admin Sign Up</h2>
+            <form id="signup-form" class="grid grid-cols-1 gap-4">
+                <input type="text" id="signup-name" placeholder="Full Name" required class="border px-4 py-2 rounded-lg" />
+                <input type="email" id="signup-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
+                <input type="password" id="signup-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Sign Up</button>
+                <p class="text-center text-sm text-gray-600">
+                    Already have an account? <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
                 </p>
             </form>
         </div>
@@ -598,6 +659,7 @@
                 <button class="collection-btn px-4 py-2 rounded-lg font-semibold" data-collection="dailycontributors">Daily Contributors</button>
                 <button class="collection-btn px-4 py-2 rounded-lg font-semibold" data-collection="januarycontributors">January Contributors</button>
                 <button class="collection-btn px-4 py-2 rounded-lg font-semibold" data-collection="minicontributors">Mini Contributors</button>
+                <button class="collection-btn px-4 py-2 rounded-lg font-semibold" data-collection="contributors">Contributors</button>
             </div>
             <div class="flex space-x-4">
                 <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">

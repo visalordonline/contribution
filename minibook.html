@@ -378,9 +378,7 @@
                         <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
                         ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
                         <div class="flex space-x-1 mt-1">
-                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
-                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded correct-btn" data-id="${contributor.id}">Correct</button>
                             <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}">History</button>
                         </div>
                     </td>
