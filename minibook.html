@@ -16,7 +16,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase config
@@ -34,17 +34,19 @@
         let app, auth, db;
         let userId = null;
         let userName = "";
+        let userEmail = "";
         let maxDayColumns = 0;
         let allContributors = [];
 
         // --- DOM Elements ---
-        const loginContainer = document.getElementById('login-container');
         const appContainer = document.getElementById('app-container');
         const dashboardName = document.getElementById('dashboard-name');
         const contributorTableBody = document.getElementById('contributor-table');
         const tableContainer = document.getElementById('table-container');
         const showModalBtn = document.getElementById('show-modal-btn');
         const logoutBtn = document.getElementById('logout-btn');
+        const showDailyIconsBtn = document.getElementById('show-daily-icons-btn');
+        const showExpensesBtn = document.getElementById('show-expenses-btn');
         const searchBar = document.getElementById('search-bar');
         const searchMonth = document.getElementById('search-month');
         const customInputModal = document.getElementById('custom-input-modal');
@@ -55,9 +57,7 @@
         const customInputModalBtn = document.getElementById('custom-input-modal-btn');
         const messageModal = document.getElementById('message-modal');
         const messageModalText = document.getElementById('message-modal-text');
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
-        const forgotPasswordForm = document.getElementById('forgot-password-form');
+        const messageModalTitle = document.getElementById('message-modal-title');
         const confirmationModal = document.getElementById('confirmation-modal');
         const confirmationModalTitle = document.getElementById('confirmation-modal-title');
         const confirmationModalText = document.getElementById('confirmation-modal-text');
@@ -65,6 +65,10 @@
         const confirmationModalNoBtn = document.getElementById('confirmation-modal-no');
         const historyModal = document.getElementById('history-modal');
         const historyModalText = document.getElementById('history-modal-text');
+        const dailyIconsModal = document.getElementById('daily-icons-modal');
+        const dailyIconsModalText = document.getElementById('daily-icons-modal-text');
+        const expensesModal = document.getElementById('expenses-modal');
+        const expensesModalText = document.getElementById('expenses-modal-text');
 
         // --- Helper function to get date string ---
         function getCurrentDateStr() {
@@ -90,50 +94,42 @@
                     console.log('Auth state changed:', user);
                     if (user) {
                         userId = user.uid;
+                        userEmail = user.email || "";
                         const userDocRef = doc(db, "users", userId);
                         const userDocSnap = await getDoc(userDocRef);
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
-                        dashboardName.textContent = userName ? `Welcome, ${userName}` : "Welcome";
-                        loginContainer.classList.add('hidden');
+                        dashboardName.innerHTML = userName ? `Welcome, ${userName}<br><span class="text-sm text-gray-600">${userEmail}</span>` : `Welcome<br><span class="text-sm text-gray-600">${userEmail}</span>`;
                         appContainer.classList.remove('hidden');
                         setupFirestoreListener();
                     } else {
                         userId = null;
                         userName = "";
-                        dashboardName.textContent = "";
-                        loginContainer.classList.remove('hidden');
+                        userEmail = "";
+                        dashboardName.innerHTML = "";
+                        sessionStorage.removeItem('user');
                         appContainer.classList.add('hidden');
                         contributorTableBody.innerHTML = '';
+                        window.location.href = 'index.html';
                     }
                 });
             } catch (error) {
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'text-red-500 text-center font-bold';
                 errorDiv.textContent = `Failed to initialize the application: ${error.message}`;
-                loginContainer.innerHTML = '';
-                loginContainer.appendChild(errorDiv);
+                appContainer.innerHTML = '';
+                appContainer.appendChild(errorDiv);
+                appContainer.classList.remove('hidden');
             }
         }
 
         // --- UI/Modal Functions ---
-        function showAuthForm(formId) {
-            document.getElementById('login-form-div').classList.add('hidden');
-            document.getElementById('register-form-div').classList.add('hidden');
-            document.getElementById('forgot-password-form-div').classList.add('hidden');
-            document.getElementById(formId).classList.remove('hidden');
-        }
-
-        document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
-        document.querySelectorAll('.show-register-link').forEach(link => link.addEventListener('click', () => showAuthForm('register-form-div')));
-        document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
-
         function showMessage(title, text) {
-            document.getElementById('message-modal-title').textContent = title;
+            messageModalTitle.textContent = title;
             messageModalText.textContent = text;
             messageModal.classList.remove('hidden');
             setTimeout(() => {
                 messageModal.classList.add('hidden');
-            }, 3000); // Auto-close after 3 seconds
+            }, 3000);
         }
 
         function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
@@ -196,81 +192,30 @@
             confirmationModalNoBtn.addEventListener('click', handleNo);
         }
 
+        // --- Modal Close Events ---
         document.getElementById('message-modal-close').addEventListener('click', () => { messageModal.classList.add('hidden'); });
         document.getElementById('custom-input-modal-close').addEventListener('click', () => { customInputModal.classList.add('hidden'); });
         document.getElementById('confirmation-modal-close').addEventListener('click', () => { confirmationModal.classList.add('hidden'); });
         document.getElementById('history-modal-close').addEventListener('click', () => { historyModal.classList.add('hidden'); });
+        document.getElementById('daily-icons-modal-close').addEventListener('click', () => { dailyIconsModal.classList.add('hidden'); });
+        document.getElementById('expenses-modal-close').addEventListener('click', () => { expensesModal.classList.add('hidden'); });
+        document.getElementById('contributor-modal').addEventListener('click', function(e) { if (e.target === document.getElementById('contributor-modal')) { document.getElementById('contributor-modal').classList.add('hidden'); } });
+        document.getElementById('history-modal').addEventListener('click', function(e) { if (e.target === historyModal) { historyModal.classList.add('hidden'); } });
         document.getElementById('message-modal').addEventListener('click', function(e) { if (e.target === messageModal) { messageModal.classList.add('hidden'); } });
         document.getElementById('custom-input-modal').addEventListener('click', function(e) { if (e.target === customInputModal) { customInputModal.classList.add('hidden'); } });
         document.getElementById('confirmation-modal').addEventListener('click', function(e) { if (e.target === confirmationModal) { confirmationModal.classList.add('hidden'); } });
-        document.getElementById('contributor-modal').addEventListener('click', function(e) { if (e.target === document.getElementById('contributor-modal')) { document.getElementById('contributor-modal').classList.add('hidden'); } });
-        document.getElementById('history-modal').addEventListener('click', function(e) { if (e.target === historyModal) { historyModal.classList.add('hidden'); } });
+        document.getElementById('daily-icons-modal').addEventListener('click', function(e) { if (e.target === dailyIconsModal) { dailyIconsModal.classList.add('hidden'); } });
+        document.getElementById('expenses-modal').addEventListener('click', function(e) { if (e.target === expensesModal) { expensesModal.classList.add('hidden'); } });
 
-        // --- Authentication Form Logic ---
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = loginForm['login-email'].value;
-            const password = loginForm['login-password'].value;
-            try {
-                loginForm.querySelector('button').disabled = true;
-                loginForm.querySelector('button').textContent = 'Logging in...';
-                await signInWithEmailAndPassword(auth, email, password);
-                showMessage('Success', 'Logged in successfully!');
-                loginContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-            } catch (error) {
-                showMessage('Error', `Login failed: ${error.message}`);
-            } finally {
-                loginForm.querySelector('button').disabled = false;
-                loginForm.querySelector('button').textContent = 'Login';
-            }
-        });
-
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = registerForm['register-name'].value;
-            const email = registerForm['register-email'].value;
-            const password = registerForm['register-password'].value;
-            try {
-                registerForm.querySelector('button').disabled = true;
-                registerForm.querySelector('button').textContent = 'Registering...';
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                userId = user.uid;
-                await setDoc(doc(db, "users", user.uid), { name: name, email: email });
-                showMessage('Success', 'Account created successfully! You are now logged in.');
-                loginContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-            } catch (error) {
-                showMessage('Error', `Registration failed: ${error.message}`);
-            } finally {
-                registerForm.querySelector('button').disabled = false;
-                registerForm.querySelector('button').textContent = 'Register';
-            }
-        });
-
-        forgotPasswordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = forgotPasswordForm['forgot-password-email'].value;
-            try {
-                forgotPasswordForm.querySelector('button').disabled = true;
-                forgotPasswordForm.querySelector('button').textContent = 'Sending...';
-                await sendPasswordResetEmail(auth, email);
-                showMessage('Success', 'Password reset email sent. Check your inbox.');
-            } catch (error) {
-                showMessage('Error', `Password reset failed: ${error.message}`);
-            } finally {
-                forgotPasswordForm.querySelector('button').disabled = false;
-                forgotPasswordForm.querySelector('button').textContent = 'Send Reset Email';
-            }
-        });
-
+        // --- Logout Logic ---
         logoutBtn.addEventListener('click', async () => {
             try {
                 logoutBtn.disabled = true;
                 logoutBtn.textContent = 'Logging out...';
                 await signOut(auth);
+                sessionStorage.removeItem('user');
                 showMessage('Success', 'Logged out successfully!');
+                window.location.href = 'index.html';
             } catch (error) {
                 showMessage('Error', `Logout failed: ${error.message}`);
             } finally {
@@ -282,7 +227,7 @@
         // --- Firestore Data Handling ---
         function setupFirestoreListener() {
             if (!userId) return;
-            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/contributors`);
+            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/minicontributors`);
             onSnapshot(contributorsCollectionRef, (snapshot) => {
                 console.log('Firestore snapshot received:', snapshot.docs.length);
                 allContributors = snapshot.docs.map(doc => {
@@ -316,6 +261,11 @@
 
         async function addContributor(data) {
             if (!userId) return;
+            const daysTicked = Math.floor(data.deposit / data.regAmount);
+            if (daysTicked > 30) {
+                showMessage('Error', 'Initial deposit would result in more than 30 ticks. Please reduce the deposit amount.');
+                return;
+            }
             try {
                 showModalBtn.disabled = true;
                 showModalBtn.textContent = 'Adding...';
@@ -359,27 +309,28 @@
         function renderTable(contributors) {
             contributorTableBody.innerHTML = '';
             const allDaysTicked = contributors.map(c => c.tickDates.length);
-            const newMaxDays = Math.max(30, ...allDaysTicked);
+            const newMaxDays = Math.min(30, Math.max(...allDaysTicked, 0));
             if (newMaxDays > maxDayColumns) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
             }
             contributors.forEach(contributor => {
-                const withdrawals = contributor.withdrawals;
-                const tickDates = contributor.tickDates;
+                const withdrawals = contributor.withdrawals || [];
+                const tickDates = contributor.tickDates || [];
                 const isLowDeposit = contributor.deposit < contributor.regAmount;
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="border px-4 py-2">${contributor.name}</td>
-                    <td class="border px-4 py-2">${contributor.regNo}</td>
-                    <td class="border px-4 py-2">${contributor.month}</td>
-                    <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
+                    <td class="border px-4 py-2">${contributor.name || ''}</td>
+                    <td class="border px-4 py-2">${contributor.regNo || ''}</td>
+                    <td class="border px-4 py-2">${contributor.month || ''}</td>
+                    <td class="border px-4 py-2 reg-amt">₦${(contributor.regAmount || 0).toFixed(2)}</td>
                     <td class="border px-4 py-2">
-                        <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
+                        <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${(contributor.deposit || 0).toFixed(2)}</div>
                         ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
-                        <div class="flex space-x-1 mt-1">
+                        <div class="flex flex-wrap space-x-1 mt-1">
+                            <button class="bg-purple-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
-                            <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}">History</button>
+                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded correct-btn" data-id="${contributor.id}">Correct</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -391,15 +342,20 @@
                     <td class="border px-4 py-2 withdrawal-3">
                         ${withdrawals[2] ? `₦${withdrawals[2].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[2].date}</span>` : ''}
                     </td>
+                    <td class="border px-4 py-2 withdrawal-4">
+                        ${withdrawals[3] ? `₦${withdrawals[3].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[3].date}</span>` : ''}
+                    </td>
+                    <td class="border px-4 py-2">${tickDates.length}</td>
                     ${generateCheckboxes(tickDates, maxDayColumns)}
                 `;
                 contributorTableBody.appendChild(row);
             });
+            bindButtonListeners();
         }
 
         function updateHeaderDays(newMaxDays) {
             const headerRow = document.getElementById('table-header-row');
-            while (headerRow.children.length > 8) headerRow.removeChild(headerRow.lastChild);
+            while (headerRow.children.length > 10) headerRow.removeChild(headerRow.lastChild);
             for (let i = 1; i <= newMaxDays; i++) {
                 const th = document.createElement('th');
                 th.className = "border px-2 py-1 text-center min-w-[50px] bg-green-100";
@@ -421,8 +377,246 @@
             }).join('');
         }
 
-        showModalBtn.addEventListener('click', () => { document.getElementById('contributor-modal').classList.remove('hidden'); });
-        document.getElementById('close-modal-btn').addEventListener('click', () => { document.getElementById('contributor-modal').classList.add('hidden'); });
+        // --- Bind Button Listeners ---
+        function bindButtonListeners() {
+            document.querySelectorAll('.add-btn, .withdraw-btn, .correct-btn, .history-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const contributorId = e.target.getAttribute('data-id');
+                    const contributor = allContributors.find(c => c.id === contributorId);
+                    if (!contributor) {
+                        showMessage('Error', 'Contributor not found.');
+                        return;
+                    }
+                    if (e.target.classList.contains('add-btn')) {
+                        showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount, selectedDate) => {
+                            const newDeposit = contributor.deposit + amount;
+                            const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
+                            const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
+                            if (totalTicks > 30) {
+                                showMessage('Error', 'Adding this amount would exceed the maximum of 30 ticks.');
+                                return;
+                            }
+                            const prevTicks = contributor.tickDates.length;
+                            const additionalTicks = totalTicks - prevTicks;
+                            let newTickDates = [...contributor.tickDates];
+                            const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                            for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
+                                newTickDates[i] = dateStr;
+                            }
+                            newTickDates = newTickDates
+                                .map((date, index) => ({ date, index }))
+                                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                                .map(item => item.date);
+                            updateContributor(contributorId, {
+                                deposit: newDeposit,
+                                totalContributions: newTotalContributions,
+                                tickDates: newTickDates
+                            });
+                        });
+                    } else if (e.target.classList.contains('withdraw-btn')) {
+                        showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
+                            if (amount > contributor.deposit) {
+                                showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
+                                return;
+                            }
+                            const withdrawals = contributor.withdrawals;
+                            if (withdrawals.length >= 4) {
+                                showMessage('Error', 'Maximum of 4 withdrawals reached.');
+                                return;
+                            }
+                            const newDeposit = contributor.deposit - amount;
+                            const newWithdrawals = [...withdrawals, { amount, date: getCurrentDateStr() }];
+                            updateContributor(contributorId, {
+                                deposit: newDeposit,
+                                withdrawals: newWithdrawals
+                            });
+                        });
+                    } else if (e.target.classList.contains('correct-btn')) {
+                        showInputModal('Correct Deposit', 'Enter corrected deposit amount', 'Correct', (correctedDeposit, selectedDate, reason) => {
+                            if (correctedDeposit < 0) {
+                                showMessage('Error', 'Corrected deposit cannot be negative.');
+                                return;
+                            }
+                            const withdrawalTotal = contributor.withdrawals.reduce((sum, w) => sum + w.amount, 0);
+                            if (correctedDeposit < withdrawalTotal) {
+                                showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.');
+                                return;
+                            }
+                            const newTotalContributions = correctedDeposit + withdrawalTotal;
+                            const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
+                            if (totalTicks > 30) {
+                                showMessage('Error', 'Corrected deposit would result in more than 30 ticks.');
+                                return;
+                            }
+                            let newTickDates = [];
+                            const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                            for (let i = 0; i < totalTicks; i++) {
+                                newTickDates[i] = dateStr;
+                            }
+                            const newCorrectionHistory = [
+                                ...contributor.correctionHistory,
+                                {
+                                    oldAmount: contributor.deposit,
+                                    newAmount: correctedDeposit,
+                                    date: dateStr,
+                                    reason
+                                }
+                            ];
+                            updateContributor(contributorId, {
+                                deposit: correctedDeposit,
+                                totalContributions: newTotalContributions,
+                                tickDates: newTickDates,
+                                correctionHistory: newCorrectionHistory
+                            });
+                        }, contributor.deposit.toFixed(2), formatDateForInput(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr()));
+                    } else if (e.target.classList.contains('history-btn')) {
+                        showHistoryModal(contributor.correctionHistory);
+                    }
+                });
+            });
+        }
+
+        showModalBtn.addEventListener('click', () => {
+            document.getElementById('contributor-modal').classList.remove('hidden');
+        });
+
+        showDailyIconsBtn.addEventListener('click', () => {
+            if (allContributors.length === 0) {
+                dailyIconsModalText.innerHTML = '<p>No contributors or ticks available.</p>';
+                dailyIconsModal.classList.remove('hidden');
+                return;
+            }
+
+            // Collect all ticks across contributors
+            const allTicks = allContributors.flatMap(contributor =>
+                (contributor.tickDates || []).map((date, index) => ({
+                    date,
+                    position: index + 1,
+                    amount: contributor.regAmount || 0,
+                    contributorName: contributor.name
+                }))
+            );
+
+            // Calculate total ticks and total amount
+            const totalTicks = allTicks.length;
+            const totalTickAmount = allTicks.reduce((sum, tick) => sum + tick.amount, 0);
+
+            // Group ticks by date
+            const ticksByDate = new Map();
+            allTicks.forEach(tick => {
+                if (!ticksByDate.has(tick.date)) {
+                    ticksByDate.set(tick.date, []);
+                }
+                ticksByDate.get(tick.date).push(tick);
+            });
+
+            // Sort dates chronologically
+            const sortedDates = Array.from(ticksByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+
+            // Generate HTML with date headers and hr
+            dailyIconsModalText.innerHTML = `
+                <div class="py-3 px-4">
+                    <p><strong>Total Ticks (All Contributors):</strong> ${totalTicks}</p>
+                    <p><strong>Total Contributions (All Ticks):</strong> ₦${totalTickAmount.toFixed(2)}</p>
+                    <h4 class="font-bold mt-4 text-lg text-gray-800">Tick Details:</h4>
+                    ${sortedDates.map(date => `
+                        <div class="mt-2">
+                            <hr class="my-2 border-gray-300">
+                            <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
+                            ${ticksByDate.get(date).map(tick => `
+                                <div class="py-1">
+                                    <p><strong>${tick.contributorName} (Position ${tick.position}):</strong> ₦${tick.amount.toFixed(2)}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            dailyIconsModal.classList.remove('hidden');
+        });
+
+        showExpensesBtn.addEventListener('click', () => {
+            const totalDeposits = allContributors.reduce((sum, c) => sum + (c.totalContributions || c.deposit || 0), 0);
+            const totalWithdrawals = allContributors.reduce((sum, c) => sum + (c.withdrawals || []).reduce((wSum, w) => wSum + w.amount, 0), 0);
+            const difference = totalDeposits - totalWithdrawals;
+            const comparison = totalDeposits === totalWithdrawals
+                ? 'Total deposits equal total withdrawals.'
+                : difference > 0
+                    ? `Total deposits exceed total withdrawals by ₦${difference.toFixed(2)}.`
+                    : `Total withdrawals exceed total deposits by ₦${Math.abs(difference).toFixed(2)}.`;
+
+            // Collect all withdrawals across contributors
+            const allWithdrawals = allContributors.flatMap(contributor =>
+                (contributor.withdrawals || []).map((w, index) => ({
+                    amount: w.amount,
+                    date: w.date,
+                    contributorName: contributor.name,
+                    index: index + 1
+                }))
+            );
+
+            if (allContributors.length === 0 && allWithdrawals.length === 0) {
+                expensesModalText.innerHTML = `
+                    <div class="py-3 px-4">
+                        <p><strong>Total Deposits (All Contributors):</strong> ₦${totalDeposits.toFixed(2)}</p>
+                        <p><strong>Total Withdrawals (All Contributors):</strong> ₦${totalWithdrawals.toFixed(2)}</p>
+                        <p><strong>Comparison:</strong> ${comparison}</p>
+                        <hr class="my-2 border-gray-300">
+                        <p>No contributors or withdrawals available.</p>
+                    </div>
+                `;
+                expensesModal.classList.remove('hidden');
+                return;
+            }
+
+            // Group withdrawals by date
+            const withdrawalsByDate = new Map();
+            allWithdrawals.forEach(w => {
+                if (!withdrawalsByDate.has(w.date)) {
+                    withdrawalsByDate.set(w.date, []);
+                }
+                withdrawalsByDate.get(w.date).push(w);
+            });
+
+            // Sort dates chronologically
+            const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+
+            // Generate HTML with date headers and hr
+            expensesModalText.innerHTML = `
+                <div class="py-3 px-4">
+                    <p><strong>Total Deposits (All Contributors):</strong> ₦${totalDeposits.toFixed(2)}</p>
+                    <p><strong>Total Withdrawals (All Contributors):</strong> ₦${totalWithdrawals.toFixed(2)}</p>
+                    <p><strong>Comparison:</strong> ${comparison}</p>
+                    <h4 class="font-bold mt-4 text-lg text-gray-800">Contributor Details:</h4>
+                    ${allContributors.map(c => `
+                        <div class="py-2">
+                            <p><strong>Name:</strong> ${c.name}</p>
+                            <p><strong>Deposits:</strong> ₦${(c.totalContributions || c.deposit || 0).toFixed(2)}</p>
+                            <p><strong>Withdrawals:</strong> ₦${(c.withdrawals || []).reduce((sum, w) => sum + w.amount, 0).toFixed(2)}</p>
+                        </div>
+                    `).join('')}
+                    <h4 class="font-bold mt-4 text-lg text-gray-800">Withdrawal Details:</h4>
+                    ${sortedDates.length > 0
+                        ? sortedDates.map(date => `
+                            <div class="mt-2">
+                                <hr class="my-2 border-gray-300">
+                                <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
+                                ${withdrawalsByDate.get(date).map(w => `
+                                    <div class="py-1">
+                                        <p><strong>${w.contributorName} (Withdrawal ${w.index}):</strong> ₦${w.amount.toFixed(2)}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `).join('')
+                        : '<p>No withdrawals recorded.</p>'}
+                </div>
+            `;
+            expensesModal.classList.remove('hidden');
+        });
+
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('contributor-modal').classList.add('hidden');
+        });
 
         document.getElementById('contributor-form').addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -433,6 +627,10 @@
                 return;
             }
             const daysTicked = Math.floor(deposit / regAmount);
+            if (daysTicked > 30) {
+                showMessage('Error', 'Initial deposit would result in more than 30 ticks. Please reduce the deposit amount.');
+                return;
+            }
             const tickDates = [];
             const todayStr = getCurrentDateStr();
             for (let i = 0; i < daysTicked; i++) tickDates[i] = todayStr;
@@ -458,95 +656,6 @@
             } finally {
                 this.querySelector('button').disabled = false;
                 this.querySelector('button').textContent = 'Add Entry';
-            }
-        });
-
-        document.addEventListener('click', function (e) {
-            if (e.target.classList.contains('add-btn') || e.target.classList.contains('withdraw-btn') || e.target.classList.contains('correct-btn') || e.target.classList.contains('history-btn') || e.target.classList.contains('delete-btn')) {
-                const contributorId = e.target.getAttribute('data-id');
-                const contributor = allContributors.find(c => c.id === contributorId);
-                if (!contributor) return;
-                if (e.target.classList.contains('add-btn')) {
-                    showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount, selectedDate) => {
-                        const newDeposit = contributor.deposit + amount;
-                        const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
-                        const prevTicks = contributor.tickDates.length;
-                        const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
-                        const additionalTicks = totalTicks - prevTicks;
-                        let newTickDates = [...contributor.tickDates];
-                        const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
-                        for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
-                            newTickDates[i] = dateStr;
-                        }
-                        newTickDates = newTickDates
-                            .map((date, index) => ({ date, index }))
-                            .sort((a, b) => new Date(a.date) - new Date(b.date))
-                            .map(item => item.date);
-                        updateContributor(contributorId, {
-                            deposit: newDeposit,
-                            totalContributions: newTotalContributions,
-                            tickDates: newTickDates
-                        });
-                    });
-                } else if (e.target.classList.contains('withdraw-btn')) {
-                    showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
-                        if (amount > contributor.deposit) {
-                            showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
-                            return;
-                        }
-                        const withdrawals = contributor.withdrawals;
-                        if (withdrawals.length >= 3) {
-                            showMessage('Error', 'Maximum of 3 withdrawals reached.');
-                            return;
-                        }
-                        const newDeposit = contributor.deposit - amount;
-                        const newWithdrawals = [...withdrawals, { amount, date: getCurrentDateStr() }];
-                        updateContributor(contributorId, {
-                            deposit: newDeposit,
-                            withdrawals: newWithdrawals
-                        });
-                    });
-                } else if (e.target.classList.contains('correct-btn')) {
-                    showInputModal('Correct Deposit', 'Enter corrected deposit amount', 'Correct', (correctedDeposit, selectedDate, reason) => {
-                        if (correctedDeposit < 0) {
-                            showMessage('Error', 'Corrected deposit cannot be negative.');
-                            return;
-                        }
-                        const withdrawalTotal = contributor.withdrawals.reduce((sum, w) => sum + w.amount, 0);
-                        if (correctedDeposit < withdrawalTotal) {
-                            showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.');
-                            return;
-                        }
-                        const newTotalContributions = correctedDeposit + withdrawalTotal;
-                        const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
-                        let newTickDates = [];
-                        const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
-                        for (let i = 0; i < totalTicks; i++) {
-                            newTickDates[i] = dateStr;
-                        }
-                        const newCorrectionHistory = [
-                            ...contributor.correctionHistory,
-                            {
-                                oldAmount: contributor.deposit,
-                                newAmount: correctedDeposit,
-                                date: dateStr,
-                                reason
-                            }
-                        ];
-                        updateContributor(contributorId, {
-                            deposit: correctedDeposit,
-                            totalContributions: newTotalContributions,
-                            tickDates: newTickDates,
-                            correctionHistory: newCorrectionHistory
-                        });
-                    }, contributor.deposit.toFixed(2), formatDateForInput(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr()));
-                } else if (e.target.classList.contains('history-btn')) {
-                    showHistoryModal(contributor.correctionHistory);
-                } else if (e.target.classList.contains('delete-btn')) {
-                    showConfirmationModal('Confirm Deletion', 'Are you sure you want to delete this contributor? This action cannot be undone.', () => {
-                        deleteContributor(contributorId);
-                    });
-                }
             }
         });
 
@@ -577,46 +686,6 @@
         window.onload = initializeFirebase;
     </script>
 
-    <!-- --- Login Container --- -->
-    <div id="login-container" class="w-full max-w-md">
-        <div id="login-form-div" class="bg-white p-8 rounded-lg shadow-2xl">
-            <h2 class="text-xl font-bold text-gray-800 mb-6">Login</h2>
-            <form id="login-form" class="grid grid-cols-1 gap-4">
-                <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
-                <p class="text-center text-sm text-gray-600">
-                    Don't have an account? <a href="#" class="show-register-link text-blue-600 hover:underline">Register</a>
-                </p>
-                <p class="text-center text-sm text-gray-600">
-                    Forgot password? <a href="#" class="show-forgot-password-link text-blue-600 hover:underline">Reset Password</a>
-                </p>
-            </form>
-        </div>
-        <div id="register-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
-            <h2 class="text-xl font-bold text-gray-800 mb-6">Register</h2>
-            <form id="register-form" class="grid grid-cols-1 gap-4">
-                <input type="text" id="register-name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
-                <input type="email" id="register-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <input type="password" id="register-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Register</button>
-                <p class="text-center text-sm text-gray-600">
-                    Already have an account? <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
-                </p>
-            </form>
-        </div>
-        <div id="forgot-password-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
-            <h2 class="text-xl font-bold text-gray-800 mb-6">Reset Password</h2>
-            <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
-                <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Send Reset Email</button>
-                <p class="text-center text-sm text-gray-600">
-                    Back to <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
-                </p>
-            </form>
-        </div>
-    </div>
-
     <!-- --- Main Application UI (Hidden by default) --- -->
     <div id="app-container" class="hidden w-full max-w-7xl">
         <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;">MINI LOAN BOOK</h1>
@@ -624,15 +693,22 @@
         <div class="flex justify-between items-center mb-6">
             <div></div> <!-- Placeholder to maintain layout -->
             <div class="flex space-x-4">
+                <a style="background-color: green; padding: 10px; border-radius: 6px; color: white;" href="index.html">GO BACK</a>
                 <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Add New Contributor
+                </button>
+                <button id="show-daily-icons-btn" class="bg-teal-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300">
+                    Daily Icons
+                </button>
+                <button id="show-expenses-btn" class="bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-orange-700 transition duration-300">
+                    Expenses
                 </button>
                 <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
                     Logout
                 </button>
             </div>
         </div>
-        <div id="table-container">
+        <div id="table-container" class="hidden">
             <div class="mb-6 flex space-x-4">
                 <input type="text" id="search-bar" placeholder="Search by Name or Reg No..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
                 <select id="search-month" class="border px-4 py-2 rounded-lg">
@@ -663,6 +739,8 @@
                             <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
                             <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
                             <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                            <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
+                            <th class="border px-4 py-2 min-w-[100px]">Total Ticks</th>
                         </tr>
                     </thead>
                     <tbody id="contributor-table" class="bg-white"></tbody>
@@ -773,6 +851,36 @@
                 </button>
             </div>
             <div id="history-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <!-- --- Daily Icons Modal --- -->
+    <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Icons</h3>
+                <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="daily-icons-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- --- Expenses Modal --- -->
+    <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Expenses</h3>
+                <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="expenses-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
         </div>
     </div>
 </body>
