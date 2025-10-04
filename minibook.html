@@ -262,8 +262,8 @@
         async function addContributor(data) {
             if (!userId) return;
             const daysTicked = Math.floor(data.deposit / data.regAmount);
-            if (daysTicked > 30) {
-                showMessage('Error', 'Initial deposit would result in more than 30 ticks. Please reduce the deposit amount.');
+            if (daysTicked > 31) {
+                showMessage('Error', 'Initial deposit would result in more than 31 ticks. Please reduce the deposit amount.');
                 return;
             }
             try {
@@ -309,7 +309,7 @@
         function renderTable(contributors) {
             contributorTableBody.innerHTML = '';
             const allDaysTicked = contributors.map(c => c.tickDates.length);
-            const newMaxDays = Math.min(30, Math.max(...allDaysTicked, 0));
+            const newMaxDays = Math.min(31, Math.max(...allDaysTicked, 0));
             if (newMaxDays > maxDayColumns) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
@@ -445,7 +445,7 @@
                             const newTotalContributions = correctedDeposit + withdrawalTotal;
                             const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
                             if (totalTicks > 30) {
-                                showMessage('Error', 'Corrected deposit would result in more than 30 ticks.');
+                                showMessage('Error', 'Corrected deposit would result in more than 31 ticks.');
                                 return;
                             }
                             let newTickDates = [];
@@ -627,8 +627,8 @@
                 return;
             }
             const daysTicked = Math.floor(deposit / regAmount);
-            if (daysTicked > 30) {
-                showMessage('Error', 'Initial deposit would result in more than 30 ticks. Please reduce the deposit amount.');
+            if (daysTicked > 31) {
+                showMessage('Error', 'Initial deposit would result in more than 31 ticks. Please reduce the deposit amount.');
                 return;
             }
             const tickDates = [];
