@@ -330,7 +330,6 @@
                         <div class="flex flex-wrap space-x-1 mt-1">
                             <button class="bg-purple-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
                             <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
-                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded correct-btn" data-id="${contributor.id}">Correct</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -393,7 +392,7 @@
                             const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
                             const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
                             if (totalTicks > 30) {
-                                showMessage('Error', 'Adding this amount would exceed the maximum of 30 ticks.');
+                                showMessage('Error', 'Adding this amount would exceed the maximum of 31 ticks.');
                                 return;
                             }
                             const prevTicks = contributor.tickDates.length;
@@ -693,7 +692,7 @@
         <div class="flex justify-between items-center mb-6">
             <div></div> <!-- Placeholder to maintain layout -->
             <div class="flex space-x-4">
-                <a style="background-color: green; padding: 10px; border-radius: 6px; color: white;" href="index.html">GO BACK</a>
+                <a style="background-color: green; padding: 10px; border-radius: 6px; color: white;" href="index.html">Main Menu</a>
                 <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Add New Contributor
                 </button>
