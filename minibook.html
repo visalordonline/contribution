@@ -28,7 +28,74 @@
             appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
             measurementId: "G-DTJGZE3JEP"
         };
+document.getElementById('manage-users-btn').addEventListener('click', () => {
+    document.getElementById('manage-users-modal').classList.remove('hidden');
+    loadUserList();
+});
 
+document.getElementById('manage-users-modal-close').addEventListener('click', () => {
+    document.getElementById('manage-users-modal').classList.add('hidden');
+});
+
+document.getElementById('manage-users-modal').addEventListener('click', function(e) {
+    if (e.target === document.getElementById('manage-users-modal')) {
+        document.getElementById('manage-users-modal').classList.add('hidden');
+    }
+});
+
+async function loadUserList() {
+    const userListDiv = document.getElementById('user-list');
+    userListDiv.innerHTML = 'Loading...';
+    try {
+        const usersCollectionRef = collection(db, `users`);
+        const usersSnapshot = await getDocs(usersCollectionRef);
+        userListDiv.innerHTML = '';
+        if (usersSnapshot.empty) {
+            userListDiv.innerHTML = '<p>No users found.</p>';
+            return;
+        }
+        usersSnapshot.forEach(userDoc => {
+            const userData = userDoc.data();
+            const userDiv = document.createElement('div');
+            userDiv.className = 'flex justify-between items-center py-2 border-b';
+            userDiv.innerHTML = `
+                <span>${userData.name || userDoc.id} (${userData.email})</span>
+                <button class="toggle-admin-btn bg-blue-600 text-white text-xs px-2 py-1 rounded" data-user-id="${userDoc.id}">
+                    ${userData.isAdmin ? 'Revoke Admin' : 'Grant Admin'}
+                </button>
+            `;
+            userListDiv.appendChild(userDiv);
+        });
+
+        document.querySelectorAll('.toggle-admin-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const userId = btn.getAttribute('data-user-id');
+                const userDocRef = doc(db, "users", userId);
+                const userDoc = await getDoc(userDocRef);
+                const isCurrentlyAdmin = userDoc.data().isAdmin || false;
+                showConfirmationModal(
+                    `${isCurrentlyAdmin ? 'Revoke' : 'Grant'} Admin Privileges`,
+                    `Are you sure you want to ${isCurrentlyAdmin ? 'revoke admin privileges from' : 'grant admin privileges to'} ${userDoc.data().name || userId}?`,
+                    async () => {
+                        await updateDoc(userDocRef, { isAdmin: !isCurrentlyAdmin });
+                        await logActivity(
+                            isCurrentlyAdmin ? 'REVOKE_ADMIN' : 'GRANT_ADMIN',
+                            `${isCurrentlyAdmin ? 'Revoked' : 'Granted'} admin privileges for ${userDoc.data().name || userId}`,
+                            null,
+                            userId
+                        );
+                        showMessage('Success', `Admin privileges ${isCurrentlyAdmin ? 'revoked' : 'granted'} successfully!`);
+                        loadUserList();
+                    }
+                );
+            });
+        });
+    } catch (error) {
+        console.error('Error loading user list:', error);
+        userListDiv.innerHTML = 'Error loading users.';
+        showMessage('Error', `Failed to load users: ${error.message}`, true);
+    }
+}
         // --- Global Variables ---
         const appId = "default-app-id";
         let app, auth, db;
@@ -480,59 +547,96 @@
         });
 
         showDailyIconsBtn.addEventListener('click', () => {
-            if (allContributors.length === 0) {
-                dailyIconsModalText.innerHTML = '<p>No contributors or ticks available.</p>';
-                dailyIconsModal.classList.remove('hidden');
-                return;
-            }
+    if (allContributors.length === 0) {
+        dailyIconsModalText.innerHTML = '<p>No contributors or ticks available.</p>';
+        dailyIconsModal.classList.remove('hidden');
+        return;
+    }
 
-            // Collect all ticks across contributors
-            const allTicks = allContributors.flatMap(contributor =>
-                (contributor.tickDates || []).map((date, index) => ({
-                    date,
-                    position: index + 1,
-                    amount: contributor.regAmount || 0,
-                    contributorName: contributor.name
-                }))
-            );
+    // Collect all ticks across contributors
+    const allTicks = allContributors.flatMap(contributor =>
+        (contributor.tickDates || []).map((date, index) => ({
+            date,
+            amount: contributor.regAmount || 0
+        }))
+    );
 
-            // Calculate total ticks and total amount
-            const totalTicks = allTicks.length;
-            const totalTickAmount = allTicks.reduce((sum, tick) => sum + tick.amount, 0);
+    // Group ticks by date and calculate total amount per date
+    const dailyTotals = new Map();
+    allTicks.forEach(tick => {
+        const dateStr = tick.date;
+        const currentTotal = dailyTotals.get(dateStr) || 0;
+        dailyTotals.set(dateStr, currentTotal + tick.amount);
+    });
 
-            // Group ticks by date
-            const ticksByDate = new Map();
-            allTicks.forEach(tick => {
-                if (!ticksByDate.has(tick.date)) {
-                    ticksByDate.set(tick.date, []);
-                }
-                ticksByDate.get(tick.date).push(tick);
-            });
+    // Calculate grand total of all contributions
+    const grandTotal = Array.from(dailyTotals.values()).reduce((sum, total) => sum + total, 0);
 
-            // Sort dates chronologically
-            const sortedDates = Array.from(ticksByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+    // Sort dates chronologically
+    const sortedDates = Array.from(dailyTotals.keys()).sort((a, b) => new Date(a) - new Date(b));
 
-            // Generate HTML with date headers and hr
-            dailyIconsModalText.innerHTML = `
-                <div class="py-3 px-4">
-                    <p><strong>Total Ticks (All Contributors):</strong> ${totalTicks}</p>
-                    <p><strong>Total Contributions (All Ticks):</strong> ₦${totalTickAmount.toFixed(2)}</p>
-                    <h4 class="font-bold mt-4 text-lg text-gray-800">Tick Details:</h4>
-                    ${sortedDates.map(date => `
-                        <div class="mt-2">
-                            <hr class="my-2 border-gray-300">
-                            <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
-                            ${ticksByDate.get(date).map(tick => `
-                                <div class="py-1">
-                                    <p><strong>${tick.contributorName} (Position ${tick.position}):</strong> ₦${tick.amount.toFixed(2)}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            dailyIconsModal.classList.remove('hidden');
-        });
+    // Generate HTML with daily totals and grand total
+    dailyIconsModalText.innerHTML = `
+        <div class="py-3 px-4">
+            <h4 class="font-bold text-lg text-gray-800">Daily Incomes</h4>
+            ${sortedDates.length > 0
+                ? sortedDates.map(date => `
+                    <div class="mt-2">
+                        <hr class="my-2 border-gray-300">
+                        <p><strong>Date:</strong> ${date}</p>
+                        <p><strong>Total Income:</strong> ₦${dailyTotals.get(date).toFixed(2)}</p>
+                    </div>
+                `).join('')
+                : '<p>No contributions recorded.</p>'}
+            <hr class="my-4 border-gray-300">
+            <p class="font-bold text-lg"><strong>Grand Total Incomes:</strong> ₦${grandTotal.toFixed(2)}</p>
+        </div>
+    `;
+    dailyIconsModal.classList.remove('hidden');
+});
+
+showExpensesBtn.addEventListener('click', () => {
+    // Collect all withdrawals across contributors
+    const allWithdrawals = allContributors.flatMap(contributor =>
+        (contributor.withdrawals || []).map(w => ({
+            amount: w.amount,
+            date: w.date
+        }))
+    );
+
+    // Group withdrawals by date and calculate total amount per date
+    const dailyWithdrawals = new Map();
+    allWithdrawals.forEach(w => {
+        const dateStr = w.date;
+        const currentTotal = dailyWithdrawals.get(dateStr) || 0;
+        dailyWithdrawals.set(dateStr, currentTotal + w.amount);
+    });
+
+    // Calculate grand total of all withdrawals
+    const grandTotalWithdrawals = Array.from(dailyWithdrawals.values()).reduce((sum, total) => sum + total, 0);
+
+    // Sort dates chronologically
+    const sortedDates = Array.from(dailyWithdrawals.keys()).sort((a, b) => new Date(a) - new Date(b));
+
+    // Generate HTML with daily totals and grand total
+    dailyIconsModalText.innerHTML = `
+        <div class="py-3 px-4">
+            <h4 class="font-bold text-lg text-gray-800">Daily Payout</h4>
+            ${sortedDates.length > 0
+                ? sortedDates.map(date => `
+                    <div class="mt-2">
+                        <hr class="my-2 border-gray-300">
+                        <p><strong>Date:</strong> ${date}</p>
+                        <p><strong>Total Payout:</strong> ₦${dailyWithdrawals.get(date).toFixed(2)}</p>
+                    </div>
+                `).join('')
+                : '<p>No withdrawals recorded.</p>'}
+            <hr class="my-4 border-gray-300">
+            <p class="font-bold text-lg"><strong>Grand Total Payout:</strong> ₦${grandTotalWithdrawals.toFixed(2)}</p>
+        </div>
+    `;
+    expensesModal.classList.remove('hidden');
+});
 
         showExpensesBtn.addEventListener('click', () => {
             const totalDeposits = allContributors.reduce((sum, c) => sum + (c.totalContributions || c.deposit || 0), 0);
@@ -882,5 +986,6 @@
             <div id="expenses-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
         </div>
     </div>
+    
 </body>
 </html>
