@@ -304,51 +304,68 @@
 
         // --- Render Activity Log ---
         function renderActivityLog() {
-            const activities = [];
+            const activitiesByDate = new Map();
             allContributors.forEach(contributor => {
-                // Add contributor creation
-                if (contributor.tickDates.length > 0) {
-                    activities.push({
-                        date: contributor.tickDates[0],
-                        description: `Contributor ${contributor.name} (${contributor.regNo}) added with initial deposit of ₦${contributor.deposit.toFixed(2)}`
-                    });
+                // Aggregate initial deposit
+                if (contributor.deposit > 0 && contributor.tickDates.length > 0) {
+                    const date = contributor.tickDates[0];
+                    if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
+                    const contributorMap = activitiesByDate.get(date);
+                    if (!contributorMap.has(contributor.name)) {
+                        contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
+                    }
+                    contributorMap.get(contributor.name).totalAmount += contributor.deposit;
                 }
-                // Add deposits (from tickDates)
+                // Aggregate additional deposits from tickDates (excluding initial)
                 contributor.tickDates.forEach((date, index) => {
                     if (index > 0 || contributor.deposit > contributor.regAmount) {
                         const amount = contributor.regAmount;
-                        activities.push({
-                            date: date,
-                            description: `₦${amount.toFixed(2)} added to ${contributor.name} (${contributor.regNo})`
-                        });
+                        if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
+                        const contributorMap = activitiesByDate.get(date);
+                        if (!contributorMap.has(contributor.name)) {
+                            contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
+                        }
+                        contributorMap.get(contributor.name).totalAmount += amount;
                     }
                 });
-                // Add withdrawals
+                // Aggregate withdrawals
                 contributor.withdrawals.forEach(withdrawal => {
-                    activities.push({
-                        date: withdrawal.date,
-                        description: `₦${withdrawal.amount.toFixed(2)} withdrawn by ${contributor.name} (${contributor.regNo})`
-                    });
+                    if (!activitiesByDate.has(withdrawal.date)) activitiesByDate.set(withdrawal.date, new Map());
+                    const contributorMap = activitiesByDate.get(withdrawal.date);
+                    if (!contributorMap.has(contributor.name)) {
+                        contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: 'withdrawn' });
+                    }
+                    contributorMap.get(contributor.name).totalAmount += withdrawal.amount;
                 });
-                // Add corrections
+                // Aggregate corrections (only where newAmount differs from oldAmount)
                 contributor.correctionHistory.forEach(correction => {
-                    activities.push({
-                        date: correction.date,
-                        description: `Deposit for ${contributor.name} (${contributor.regNo}) corrected from ₦${correction.oldAmount.toFixed(2)} to ₦${correction.newAmount.toFixed(2)} - Reason: ${correction.reason}`
-                    });
+                    const diff = correction.newAmount - correction.oldAmount;
+                    if (diff !== 0) {
+                        const date = correction.date;
+                        if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
+                        const contributorMap = activitiesByDate.get(date);
+                        if (!contributorMap.has(contributor.name)) {
+                            contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: diff > 0 ? 'added' : 'withdrawn' });
+                        }
+                        contributorMap.get(contributor.name).totalAmount += Math.abs(diff);
+                    }
                 });
             });
 
-            // Sort activities by date (most recent first)
-            activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Sort dates chronologically
+            const sortedDates = Array.from(activitiesByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
 
-            // Render all activities
-            activityLog.innerHTML = activities.length > 0 ? activities.map(activity => `
-                <div class="border-b py-2">
-                    <p class="text-sm text-gray-600">${formatDate(activity.date)}</p>
-                    <p class="text-gray-800">${activity.description}</p>
-                </div>
-            `).join('') : '<p class="text-gray-600">No activities recorded yet.</p>';
+            // Render aggregated activities
+            activityLog.innerHTML = sortedDates.length > 0 ? sortedDates.map(date => {
+                const contributorMap = activitiesByDate.get(date);
+                const contributors = Array.from(contributorMap.entries());
+                return contributors.map(([name, data]) => `
+                    <div class="border-b py-2">
+                        <p class="text-sm text-gray-600">${formatDate(date)}</p>
+                        <p class="text-gray-800">₦${data.totalAmount.toFixed(2)} ${data.type} by ${name} (${data.regNo})</p>
+                    </div>
+                `).join('');
+            }).join('') : '<p class="text-gray-600">No activities recorded yet.</p>';
         }
 
         // --- Render Contributor Table ---
@@ -389,6 +406,8 @@
                     <td class="border px-4 py-2 withdrawal-3">
                         ${withdrawals[2] ? `₦${withdrawals[2].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[2].date}</span>` : ''}
                     </td>
+                    <td class="border px-4 py-2 withdrawal-4"></td>
+                    <td class="border px-4 py-2">${tickDates.length}</td>
                     ${generateCheckboxes(tickDates, maxDayColumns)}
                 `;
                 contributorTableBody.appendChild(row);
@@ -397,7 +416,19 @@
 
         function updateHeaderDays(newMaxDays) {
             const headerRow = document.getElementById('table-header-row');
-            while (headerRow.children.length > 8) headerRow.removeChild(headerRow.lastChild);
+            while (headerRow.children.length > 9) headerRow.removeChild(headerRow.lastChild);
+            headerRow.innerHTML = `
+                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
+                <th class="border px-4 py-2 min-w-[100px]">Month</th>
+                <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
+                <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
+                <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">Total Ticks</th>
+            `;
             for (let i = 1; i <= newMaxDays; i++) {
                 const th = document.createElement('th');
                 th.className = "border px-2 py-1 text-center min-w-[50px] bg-green-100";
@@ -496,7 +527,7 @@
                 if (!contributor) return;
 
                 if (e.target.classList.contains('withdraw-btn')) {
-                    showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
+                    showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount, selectedDate, reason) => {
                         if (amount > contributor.deposit) {
                             showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
                             return;
@@ -507,7 +538,7 @@
                             return;
                         }
                         const newDeposit = contributor.deposit - amount;
-                        const newWithdrawals = [...withdrawals, { amount, date: formatDate(new Date()) }];
+                        const newWithdrawals = [...withdrawals, { amount, date: formatDate(selectedDate) }];
                         updateContributor(contributorId, {
                             deposit: newDeposit,
                             withdrawals: newWithdrawals
@@ -615,7 +646,7 @@
             <div></div> <!-- Placeholder to maintain layout -->
             <div class="flex space-x-4">
                 <button id="contribute-page-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
-                    Main Menu Home
+                    Main Menu Home
                 </button>
                 <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
                     Logout
@@ -641,6 +672,8 @@
                                 <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
                                 <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
                                 <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                                <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
+                                <th class="border px-4 py-2 min-w-[100px]">Total Ticks</th>
                             </tr>
                         </thead>
                         <tbody id="contributor-table" class="bg-white"></tbody>

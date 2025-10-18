@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DAILY BOOK</title>
+    <title>DAILY  BOOK</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
@@ -387,7 +387,7 @@
                         return;
                     }
                     if (e.target.classList.contains('add-btn')) {
-                        showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount, selectedDate) => {
+                        showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount, selectedDate, reason) => {
                             const newDeposit = contributor.deposit + amount;
                             const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
                             const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
@@ -406,14 +406,24 @@
                                 .map((date, index) => ({ date, index }))
                                 .sort((a, b) => new Date(a.date) - new Date(b.date))
                                 .map(item => item.date);
+                            const newCorrectionHistory = [
+                                ...contributor.correctionHistory,
+                                {
+                                    oldAmount: contributor.deposit,
+                                    newAmount: newDeposit,
+                                    date: dateStr,
+                                    reason: reason || 'Deposit added'
+                                }
+                            ];
                             updateContributor(contributorId, {
                                 deposit: newDeposit,
                                 totalContributions: newTotalContributions,
-                                tickDates: newTickDates
+                                tickDates: newTickDates,
+                                correctionHistory: newCorrectionHistory
                             });
                         });
                     } else if (e.target.classList.contains('withdraw-btn')) {
-                        showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount) => {
+                        showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount, selectedDate, reason) => {
                             if (amount > contributor.deposit) {
                                 showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
                                 return;
@@ -424,10 +434,21 @@
                                 return;
                             }
                             const newDeposit = contributor.deposit - amount;
-                            const newWithdrawals = [...withdrawals, { amount, date: getCurrentDateStr() }];
+                            const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const newWithdrawals = [...withdrawals, { amount, date: dateStr }];
+                            const newCorrectionHistory = [
+                                ...contributor.correctionHistory,
+                                {
+                                    oldAmount: contributor.deposit,
+                                    newAmount: newDeposit,
+                                    date: dateStr,
+                                    reason: reason || 'Withdrawal'
+                                }
+                            ];
                             updateContributor(contributorId, {
                                 deposit: newDeposit,
-                                withdrawals: newWithdrawals
+                                withdrawals: newWithdrawals,
+                                correctionHistory: newCorrectionHistory
                             });
                         });
                     } else if (e.target.classList.contains('correct-btn')) {
@@ -479,171 +500,162 @@
             document.getElementById('contributor-modal').classList.remove('hidden');
         });
 
-       showDailyIconsBtn.addEventListener('click', () => {
-    if (allContributors.length === 0) {
-        dailyIconsModalText.innerHTML = '<p>No contributors or ticks available.</p>';
-        dailyIconsModal.classList.remove('hidden');
-        return;
-    }
+        showDailyIconsBtn.addEventListener('click', () => {
+            if (allContributors.length === 0) {
+                dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
+                dailyIconsModal.classList.remove('hidden');
+                return;
+            }
 
-    // Collect all ticks across contributors
-    const allTicks = allContributors.flatMap(contributor =>
-        (contributor.tickDates || []).map((date, index) => ({
-            date,
-            amount: contributor.regAmount || 0
-        }))
-    );
+            // Collect all deposit transactions (initial deposits and additions) from correctionHistory
+            const allDeposits = allContributors.flatMap(contributor => {
+                const transactions = [];
+                // Include initial deposit
+                if (contributor.deposit > 0) {
+                    transactions.push({
+                        contributorName: contributor.name,
+                        amount: contributor.deposit,
+                        date: contributor.tickDates[0] || getCurrentDateStr(),
+                        type: 'Initial Deposit',
+                        reason: 'Initial deposit'
+                    });
+                }
+                // Include additions and corrections from correctionHistory where newAmount > oldAmount
+                (contributor.correctionHistory || []).forEach(h => {
+                    if (h.newAmount > h.oldAmount) {
+                        transactions.push({
+                            contributorName: contributor.name,
+                            amount: h.newAmount - h.oldAmount,
+                            date: h.date,
+                            type: 'Deposit',
+                            reason: h.reason
+                        });
+                    }
+                });
+                return transactions;
+            });
 
-    // Group ticks by date and calculate total amount per date
-    const dailyTotals = new Map();
-    allTicks.forEach(tick => {
-        const dateStr = tick.date;
-        const currentTotal = dailyTotals.get(dateStr) || 0;
-        dailyTotals.set(dateStr, currentTotal + tick.amount);
-    });
+            // Group deposits by date and contributor, summing amounts
+            const depositsByDate = new Map();
+            allDeposits.forEach(dep => {
+                const dateStr = dep.date;
+                if (!depositsByDate.has(dateStr)) {
+                    depositsByDate.set(dateStr, new Map());
+                }
+                const contributorMap = depositsByDate.get(dateStr);
+                if (!contributorMap.has(dep.contributorName)) {
+                    contributorMap.set(dep.contributorName, { totalAmount: 0, reason: dep.reason });
+                }
+                contributorMap.get(dep.contributorName).totalAmount += dep.amount;
+            });
 
-    // Calculate grand total of all contributions
-    const grandTotal = Array.from(dailyTotals.values()).reduce((sum, total) => sum + total, 0);
+            // Sort dates chronologically
+            const sortedDates = Array.from(depositsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
 
-    // Sort dates chronologically
-    const sortedDates = Array.from(dailyTotals.keys()).sort((a, b) => new Date(a) - new Date(b));
-
-    // Generate HTML with daily totals and grand total
-    dailyIconsModalText.innerHTML = `
-        <div class="py-3 px-4">
-            <h4 class="font-bold text-lg text-gray-800">Daily Incomes</h4>
-            ${sortedDates.length > 0
-                ? sortedDates.map(date => `
-                    <div class="mt-2">
-                        <hr class="my-2 border-gray-300">
-                        <p><strong>Date:</strong> ${date}</p>
-                        <p><strong>Total Income:</strong> ₦${dailyTotals.get(date).toFixed(2)}</p>
-                    </div>
-                `).join('')
-                : '<p>No contributions recorded.</p>'}
-            <hr class="my-4 border-gray-300">
-            <p class="font-bold text-lg"><strong>Grand Total Incomes:</strong> ₦${grandTotal.toFixed(2)}</p>
-        </div>
-    `;
-    dailyIconsModal.classList.remove('hidden');
-});
-
-showExpensesBtn.addEventListener('click', () => {
-    // Collect all withdrawals across contributors
-    const allWithdrawals = allContributors.flatMap(contributor =>
-        (contributor.withdrawals || []).map(w => ({
-            amount: w.amount,
-            date: w.date
-        }))
-    );
-
-    // Group withdrawals by date and calculate total amount per date
-    const dailyWithdrawals = new Map();
-    allWithdrawals.forEach(w => {
-        const dateStr = w.date;
-        const currentTotal = dailyWithdrawals.get(dateStr) || 0;
-        dailyWithdrawals.set(dateStr, currentTotal + w.amount);
-    });
-
-    // Calculate grand total of all withdrawals
-    const grandTotalWithdrawals = Array.from(dailyWithdrawals.values()).reduce((sum, total) => sum + total, 0);
-
-    // Sort dates chronologically
-    const sortedDates = Array.from(dailyWithdrawals.keys()).sort((a, b) => new Date(a) - new Date(b));
-
-    // Generate HTML with daily totals and grand total
-    dailyIconsModalText.innerHTML = `
-        <div class="py-3 px-4">
-            <h4 class="font-bold text-lg text-gray-800">Daily Payout</h4>
-            ${sortedDates.length > 0
-                ? sortedDates.map(date => `
-                    <div class="mt-2">
-                        <hr class="my-2 border-gray-300">
-                        <p><strong>Date:</strong> ${date}</p>
-                        <p><strong>Total Payout:</strong> ₦${dailyWithdrawals.get(date).toFixed(2)}</p>
-                    </div>
-                `).join('')
-                : '<p>No withdrawals recorded.</p>'}
-            <hr class="my-4 border-gray-300">
-            <p class="font-bold text-lg"><strong>Grand Total Payout:</strong> ₦${grandTotalWithdrawals.toFixed(2)}</p>
-        </div>
-    `;
-    expensesModal.classList.remove('hidden');
-});
+            // Generate HTML with transaction history and totals
+            dailyIconsModalText.innerHTML = `
+                <div class="py-3 px-4">
+                    <h4 class="font-bold text-lg text-gray-800">Daily Incomes</h4>
+                    ${sortedDates.length > 0
+                        ? sortedDates.map(date => {
+                            const contributorMap = depositsByDate.get(date);
+                            const contributors = Array.from(contributorMap.entries());
+                            const dailyTotal = contributors.reduce((sum, [, data]) => sum + data.totalAmount, 0);
+                            return `
+                                <div class="mt-2">
+                                    <hr class="my-2 border-gray-300">
+                                    <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
+                                    ${contributors.map(([contributorName, data]) => `
+                                        <div class="py-1">
+                                            <p><strong>${contributorName} ${data.reason === 'Initial deposit' ? 'deposited' : 'added'} ₦${data.totalAmount.toFixed(2)}</strong></p>
+                                            <p class="text-xs text-gray-500">Reason: ${data.reason || 'No reason provided'}</p>
+                                        </div>
+                                    `).join('')}
+                                    <p class="font-semibold mt-2">Total: ₦${dailyTotal.toFixed(2)}</p>
+                                </div>
+                            `;
+                        }).join('')
+                        : '<p>No deposits recorded.</p>'}
+                </div>
+            `;
+            dailyIconsModal.classList.remove('hidden');
+        });
 
         showExpensesBtn.addEventListener('click', () => {
-            const totalDeposits = allContributors.reduce((sum, c) => sum + (c.totalContributions || c.deposit || 0), 0);
-            const totalWithdrawals = allContributors.reduce((sum, c) => sum + (c.withdrawals || []).reduce((wSum, w) => wSum + w.amount, 0), 0);
-            const difference = totalDeposits - totalWithdrawals;
-            const comparison = totalDeposits === totalWithdrawals
-                ? 'Total deposits equal total withdrawals.'
-                : difference > 0
-                    ? `Total deposits exceed total withdrawals by ₦${difference.toFixed(2)}.`
-                    : `Total withdrawals exceed total deposits by ₦${Math.abs(difference).toFixed(2)}.`;
-
-            // Collect all withdrawals across contributors
-            const allWithdrawals = allContributors.flatMap(contributor =>
-                (contributor.withdrawals || []).map((w, index) => ({
-                    amount: w.amount,
-                    date: w.date,
-                    contributorName: contributor.name,
-                    index: index + 1
-                }))
-            );
-
-            if (allContributors.length === 0 && allWithdrawals.length === 0) {
-                expensesModalText.innerHTML = `
-                    <div class="py-3 px-4">
-                        <p><strong>Total Deposits (All Contributors):</strong> ₦${totalDeposits.toFixed(2)}</p>
-                        <p><strong>Total Withdrawals (All Contributors):</strong> ₦${totalWithdrawals.toFixed(2)}</p>
-                        <p><strong>Comparison:</strong> ${comparison}</p>
-                        <hr class="my-2 border-gray-300">
-                        <p>No contributors or withdrawals available.</p>
-                    </div>
-                `;
+            if (allContributors.length === 0) {
+                expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
                 expensesModal.classList.remove('hidden');
                 return;
             }
 
-            // Group withdrawals by date
+            // Collect all withdrawal transactions from correctionHistory and withdrawals
+            const allWithdrawals = allContributors.flatMap(contributor => {
+                const transactions = [];
+                // Include withdrawals from withdrawals array
+                (contributor.withdrawals || []).forEach((w, index) => {
+                    transactions.push({
+                        contributorName: contributor.name,
+                        amount: w.amount,
+                        date: w.date,
+                        type: `Withdrawal ${index + 1}`,
+                        reason: 'Withdrawal'
+                    });
+                });
+                // Include corrections from correctionHistory where newAmount < oldAmount
+                (contributor.correctionHistory || []).forEach(h => {
+                    if (h.newAmount < h.oldAmount) {
+                        transactions.push({
+                            contributorName: contributor.name,
+                            amount: h.oldAmount - h.newAmount,
+                            date: h.date,
+                            type: 'Correction (Withdrawal)',
+                            reason: h.reason
+                        });
+                    }
+                });
+                return transactions;
+            });
+
+            // Group withdrawals by date and contributor, summing amounts
             const withdrawalsByDate = new Map();
             allWithdrawals.forEach(w => {
-                if (!withdrawalsByDate.has(w.date)) {
-                    withdrawalsByDate.set(w.date, []);
+                const dateStr = w.date;
+                if (!withdrawalsByDate.has(dateStr)) {
+                    withdrawalsByDate.set(dateStr, new Map());
                 }
-                withdrawalsByDate.get(w.date).push(w);
+                const contributorMap = withdrawalsByDate.get(dateStr);
+                if (!contributorMap.has(w.contributorName)) {
+                    contributorMap.set(w.contributorName, { totalAmount: 0, reason: w.reason });
+                }
+                contributorMap.get(w.contributorName).totalAmount += w.amount;
             });
 
             // Sort dates chronologically
             const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
 
-            // Generate HTML with date headers and hr
+            // Generate HTML with transaction history and totals
             expensesModalText.innerHTML = `
                 <div class="py-3 px-4">
-                    <p><strong>Total Deposits (All Contributors):</strong> ₦${totalDeposits.toFixed(2)}</p>
-                    <p><strong>Total Withdrawals (All Contributors):</strong> ₦${totalWithdrawals.toFixed(2)}</p>
-                    <p><strong>Comparison:</strong> ${comparison}</p>
-                    <h4 class="font-bold mt-4 text-lg text-gray-800">Contributor Details:</h4>
-                    ${allContributors.map(c => `
-                        <div class="py-2">
-                            <p><strong>Name:</strong> ${c.name}</p>
-                            <p><strong>Deposits:</strong> ₦${(c.totalContributions || c.deposit || 0).toFixed(2)}</p>
-                            <p><strong>Withdrawals:</strong> ₦${(c.withdrawals || []).reduce((sum, w) => sum + w.amount, 0).toFixed(2)}</p>
-                        </div>
-                    `).join('')}
-                    <h4 class="font-bold mt-4 text-lg text-gray-800">Withdrawal Details:</h4>
+                    <h4 class="font-bold text-lg text-gray-800">Daily Payout</h4>
                     ${sortedDates.length > 0
-                        ? sortedDates.map(date => `
-                            <div class="mt-2">
-                                <hr class="my-2 border-gray-300">
-                                <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
-                                ${withdrawalsByDate.get(date).map(w => `
-                                    <div class="py-1">
-                                        <p><strong>${w.contributorName} (Withdrawal ${w.index}):</strong> ₦${w.amount.toFixed(2)}</p>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `).join('')
+                        ? sortedDates.map(date => {
+                            const contributorMap = withdrawalsByDate.get(date);
+                            const contributors = Array.from(contributorMap.entries());
+                            const dailyTotal = contributors.reduce((sum, [, data]) => sum + data.totalAmount, 0);
+                            return `
+                                <div class="mt-2">
+                                    <hr class="my-2 border-gray-300">
+                                    <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
+                                    ${contributors.map(([contributorName, data]) => `
+                                        <div class="py-1">
+                                            <p><strong>${contributorName} withdrew ₦${data.totalAmount.toFixed(2)}</strong></p>
+                                            <p class="text-xs text-gray-500">Reason: ${data.reason || 'No reason provided'}</p>
+                                        </div>
+                                    `).join('')}
+                                    <p class="font-semibold mt-2">Total: ₦${dailyTotal.toFixed(2)}</p>
+                                </div>
+                            `;
+                        }).join('')
                         : '<p>No withdrawals recorded.</p>'}
                 </div>
             `;
@@ -679,7 +691,12 @@ showExpensesBtn.addEventListener('click', () => {
                 totalContributions: deposit,
                 withdrawals: [],
                 tickDates,
-                correctionHistory: []
+                correctionHistory: [{
+                    oldAmount: 0,
+                    newAmount: deposit,
+                    date: todayStr,
+                    reason: 'Initial deposit'
+                }]
             };
             try {
                 this.querySelector('button').disabled = true;
@@ -724,12 +741,12 @@ showExpensesBtn.addEventListener('click', () => {
 
     <!-- --- Main Application UI (Hidden by default) --- -->
     <div id="app-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;">DAILY BOOK</h1>
+        <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;">DAILY  BOOK</h1>
         <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
         <div class="flex justify-between items-center mb-6">
             <div></div> <!-- Placeholder to maintain layout -->
             <div class="flex space-x-4">
-                <a style="background-color: green; padding: 10px; border-radius: 6px; color: white;" href="index.html">Main Menu</a>
+                <a style="background-color: green; padding: 10px; border-radius: 6px; color: white;" href="index.html">Main Menu</a>
                 <button id="show-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Add New Contributor
                 </button>
@@ -894,7 +911,7 @@ showExpensesBtn.addEventListener('click', () => {
     <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Daily Icons</h3>
+                <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
                 <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -909,7 +926,7 @@ showExpensesBtn.addEventListener('click', () => {
     <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Expenses</h3>
+                <h3 class="text-xl font-bold text-gray-800">Daily Payout</h3>
                 <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
