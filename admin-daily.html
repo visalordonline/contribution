@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin || Daily contribution</title>
+    <title>Admin || Daily Contribution</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
@@ -16,7 +16,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, getDoc, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, getDoc, doc, setDoc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase config
         const firebaseConfig = {
@@ -34,6 +34,7 @@
         let userId = null;
         let userName = "";
         let allContributors = [];
+        let filteredContributors = [];
         let maxDayColumns = 0;
 
         // --- DOM Elements ---
@@ -65,6 +66,12 @@
         const historyModalText = document.getElementById('history-modal-text');
         const editModal = document.getElementById('edit-modal');
         const editForm = document.getElementById('edit-form');
+        const searchInput = document.getElementById('search-input');
+        const searchMonth = document.getElementById('search-month');
+        const dailyIconsModal = document.getElementById('daily-icons-modal');
+        const dailyIconsModalText = document.getElementById('daily-icons-modal-text');
+        const expensesModal = document.getElementById('expenses-modal');
+        const expensesModalText = document.getElementById('expenses-modal-text');
 
         // --- Helper function to format date ---
         function formatDate(dateStr) {
@@ -92,10 +99,11 @@
                         const userDocRef = doc(db, "users", userId);
                         const userDocSnap = await getDoc(userDocRef);
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
-                        dashboardName.textContent = userName ? `Welcome, ${userName}` : "Welcome";
+                        const isAdmin = userDocSnap.exists() && userDocSnap.data().role === "admin";
+                        dashboardName.textContent = userName ? `Welcome, ${userName} (${isAdmin ? 'Admin' : 'User'})` : "Welcome";
                         loginContainer.classList.add('hidden');
                         dashboardContainer.classList.remove('hidden');
-                        setupFirestoreListener();
+                        setupFirestoreListener(isAdmin);
                     } else {
                         userId = null;
                         userName = "";
@@ -164,7 +172,7 @@
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
                 userId = user.uid;
-                await setDoc(doc(db, "users", user.uid), { name: name, email: email });
+                await setDoc(doc(db, "users", user.uid), { name: name, email: email, role: "user" });
                 showMessage('Success', 'Account created successfully! You are now logged in.');
                 loginContainer.classList.add('hidden');
                 dashboardContainer.classList.remove('hidden');
@@ -254,36 +262,95 @@
         }
 
         // --- Firestore Data Handling ---
-        function setupFirestoreListener() {
+        async function setupFirestoreListener(isAdmin) {
             if (!userId) return;
-            const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailycontributors`);
-            onSnapshot(contributorsCollectionRef, (snapshot) => {
-                allContributors = snapshot.docs.map(doc => {
-                    let data = doc.data();
-                    if (!Array.isArray(data.tickDates)) data.tickDates = [];
-                    if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
-                    if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
-                    if (typeof data.totalContributions !== 'number') {
-                        data.totalContributions = data.deposit || 0;
-                    }
-                    data.tickDates = data.tickDates
-                        .map((date, index) => ({ date, index }))
-                        .sort((a, b) => new Date(a.date) - new Date(b.date))
-                        .map(item => item.date);
-                    return { id: doc.id, ...data };
+            allContributors = [];
+            filteredContributors = [];
+
+            if (isAdmin) {
+                // Fetch all users
+                // Fetch all users from the root "users" collection and prepare their contributors collections
+                const usersSnapshot = await getDocs(collection(db, "users"));
+                const userPromises = usersSnapshot.docs.map(async userDoc => {
+                    const uid = userDoc.id;
+                    const userName = (userDoc.data() && userDoc.data().name) ? userDoc.data().name : "Unknown User";
+                    const contributorCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/dailycontributors`);
+                    return { userId: uid, userName, contributorCollectionRef };
                 });
-                renderActivityLog();
-                renderContributorTable();
-                if (allContributors.length > 0) tableContainer.classList.remove('hidden');
-            }, (error) => {
-                showMessage('Error', 'Failed to load data from the database.');
-            });
+                const usersData = await Promise.all(userPromises);
+
+                // Set up listeners for each user's contributors
+                usersData.forEach(({ userId: contributorUserId, userName, contributorCollectionRef }) => {
+                    onSnapshot(contributorCollectionRef, (snapshot) => {
+                        const contributors = snapshot.docs.map(doc => {
+                            let data = doc.data();
+                            if (!Array.isArray(data.tickDates)) data.tickDates = [];
+                            if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
+                            if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
+                            if (typeof data.totalContributions !== 'number') {
+                                data.totalContributions = data.deposit || 0;
+                            }
+                            data.tickDates = data.tickDates
+                                .map((date, index) => ({ date, index }))
+                                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                                .map(item => item.date);
+                            return {
+                                id: doc.id,
+                                userId: contributorUserId,
+                                userName,
+                                ...data
+                            };
+                        });
+                        // Update allContributors by merging new data
+                        allContributors = allContributors.filter(c => c.userId !== contributorUserId).concat(contributors);
+                        filteredContributors = [...allContributors];
+                        renderActivityLog();
+                        renderContributorTable();
+                        if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+                    }, (error) => {
+                        showMessage('Error', 'Failed to load contributor data.');
+                    });
+                });
+            } else {
+                // Non-admin: fetch only own contributors
+                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailycontributors`);
+                onSnapshot(contributorsCollectionRef, (snapshot) => {
+                    allContributors = snapshot.docs.map(doc => {
+                        let data = doc.data();
+                        if (!Array.isArray(data.tickDates)) data.tickDates = [];
+                        if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
+                        if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
+                        if (typeof data.totalContributions !== 'number') {
+                            data.totalContributions = data.deposit || 0;
+                        }
+                        data.tickDates = data.tickDates
+                            .map((date, index) => ({ date, index }))
+                            .sort((a, b) => new Date(a.date) - new Date(b.date))
+                            .map(item => item.date);
+                        return { id: doc.id, userId, userName, ...data };
+                    });
+                    filteredContributors = [...allContributors];
+                    renderActivityLog();
+                    renderContributorTable();
+                    if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+                }, (error) => {
+                    showMessage('Error', 'Failed to load contributor data.');
+                });
+            }
         }
 
-        async function updateContributor(id, data) {
+        async function updateContributor(id, data, contributorUserId) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/dailycontributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${contributorUserId}/dailycontributors`, id);
+                const contributorSnap = await getDoc(contributorDocRef);
+                if (contributorSnap.exists() && contributorUserId !== userId) {
+                    const userDoc = await getDoc(doc(db, "users", userId));
+                    if (!userDoc.exists() || userDoc.data().role !== "admin") {
+                        showMessage('Error', 'You are not authorized to update this contributor.');
+                        return;
+                    }
+                }
                 await updateDoc(contributorDocRef, data);
                 showMessage('Success', 'Contributor updated successfully!');
             } catch (error) {
@@ -291,10 +358,18 @@
             }
         }
 
-        async function deleteContributor(id) {
+        async function deleteContributor(id, contributorUserId) {
             if (!userId) return;
             try {
-                const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/dailycontributors`, id);
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${contributorUserId}/dailycontributors`, id);
+                const contributorSnap = await getDoc(contributorDocRef);
+                if (contributorSnap.exists() && contributorUserId !== userId) {
+                    const userDoc = await getDoc(doc(db, "users", userId));
+                    if (!userDoc.exists() || userDoc.data().role !== "admin") {
+                        showMessage('Error', 'You are not authorized to delete this contributor.');
+                        return;
+                    }
+                }
                 await deleteDoc(contributorDocRef);
                 showMessage('Success', 'Contributor deleted successfully!');
             } catch (error) {
@@ -302,19 +377,38 @@
             }
         }
 
+        // --- Search and Filter Functionality ---
+        function filterContributors() {
+            const query = searchInput.value.toLowerCase().trim();
+            const selectedMonth = searchMonth.value.toLowerCase();
+            filteredContributors = allContributors.filter(contributor => {
+                const matchesSearch = query === '' ||
+                    contributor.name.toLowerCase().includes(query) ||
+                    contributor.regNo.toLowerCase().includes(query) ||
+                    contributor.userName.toLowerCase().includes(query);
+                const matchesMonth = selectedMonth === '' || contributor.month.toLowerCase() === selectedMonth;
+                return matchesSearch && matchesMonth;
+            });
+            renderContributorTable();
+        }
+
+        searchInput.addEventListener('input', filterContributors);
+        searchMonth.addEventListener('change', filterContributors);
+
         // --- Render Activity Log ---
         function renderActivityLog() {
             const activitiesByDate = new Map();
-            allContributors.forEach(contributor => {
+            filteredContributors.forEach(contributor => {
                 // Aggregate initial deposit
                 if (contributor.deposit > 0 && contributor.tickDates.length > 0) {
                     const date = contributor.tickDates[0];
                     if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
                     const contributorMap = activitiesByDate.get(date);
-                    if (!contributorMap.has(contributor.name)) {
-                        contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
+                    const key = `${contributor.name} (${contributor.userName})`;
+                    if (!contributorMap.has(key)) {
+                        contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
                     }
-                    contributorMap.get(contributor.name).totalAmount += contributor.deposit;
+                    contributorMap.get(key).totalAmount += contributor.deposit;
                 }
                 // Aggregate additional deposits from tickDates (excluding initial)
                 contributor.tickDates.forEach((date, index) => {
@@ -322,68 +416,70 @@
                         const amount = contributor.regAmount;
                         if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
                         const contributorMap = activitiesByDate.get(date);
-                        if (!contributorMap.has(contributor.name)) {
-                            contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
+                        const key = `${contributor.name} (${contributor.userName})`;
+                        if (!contributorMap.has(key)) {
+                            contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
                         }
-                        contributorMap.get(contributor.name).totalAmount += amount;
+                        contributorMap.get(key).totalAmount += amount;
                     }
                 });
                 // Aggregate withdrawals
                 contributor.withdrawals.forEach(withdrawal => {
                     if (!activitiesByDate.has(withdrawal.date)) activitiesByDate.set(withdrawal.date, new Map());
                     const contributorMap = activitiesByDate.get(withdrawal.date);
-                    if (!contributorMap.has(contributor.name)) {
-                        contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: 'withdrawn' });
+                    const key = `${contributor.name} (${contributor.userName})`;
+                    if (!contributorMap.has(key)) {
+                        contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: 'withdrawn' });
                     }
-                    contributorMap.get(contributor.name).totalAmount += withdrawal.amount;
+                    contributorMap.get(key).totalAmount += withdrawal.amount;
                 });
-                // Aggregate corrections (only where newAmount differs from oldAmount)
+                // Aggregate corrections
                 contributor.correctionHistory.forEach(correction => {
                     const diff = correction.newAmount - correction.oldAmount;
                     if (diff !== 0) {
                         const date = correction.date;
                         if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
                         const contributorMap = activitiesByDate.get(date);
-                        if (!contributorMap.has(contributor.name)) {
-                            contributorMap.set(contributor.name, { totalAmount: 0, regNo: contributor.regNo, type: diff > 0 ? 'added' : 'withdrawn' });
+                        const key = `${contributor.name} (${contributor.userName})`;
+                        if (!contributorMap.has(key)) {
+                            contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: diff > 0 ? 'added' : 'withdrawn' });
                         }
-                        contributorMap.get(contributor.name).totalAmount += Math.abs(diff);
+                        contributorMap.get(key).totalAmount += Math.abs(diff);
                     }
                 });
             });
 
-            // Sort dates chronologically
             const sortedDates = Array.from(activitiesByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
-
-            // Render aggregated activities
             activityLog.innerHTML = sortedDates.length > 0 ? sortedDates.map(date => {
                 const contributorMap = activitiesByDate.get(date);
                 const contributors = Array.from(contributorMap.entries());
-                return contributors.map(([name, data]) => `
+                return contributors.map(([key, data]) => `
                     <div class="border-b py-2">
                         <p class="text-sm text-gray-600">${formatDate(date)}</p>
-                        <p class="text-gray-800">₦${data.totalAmount.toFixed(2)} ${data.type} by ${name} (${data.regNo})</p>
+                        <p class="text-gray-800">₦${data.totalAmount.toFixed(2)} ${data.type} by ${key} (${data.regNo})</p>
                     </div>
                 `).join('');
             }).join('') : '<p class="text-gray-600">No activities recorded yet.</p>';
         }
 
         // --- Render Contributor Table ---
-        function renderContributorTable() {
+        async function renderContributorTable() {
             contributorTableBody.innerHTML = '';
-            const allDaysTicked = allContributors.map(c => c.tickDates.length);
-            const newMaxDays = Math.max(30, ...allDaysTicked);
+            const allDaysTicked = filteredContributors.map(c => c.tickDates.length);
+            const newMaxDays = Math.min(31, Math.max(1, ...allDaysTicked));
             if (newMaxDays > maxDayColumns) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
             }
-            allContributors.forEach(contributor => {
+            const userDoc = await getDoc(doc(db, "users", userId));
+            const isAdmin = userDoc.exists() && userDoc.data().role === "admin";
+            filteredContributors.forEach(contributor => {
                 const withdrawals = contributor.withdrawals;
                 const tickDates = contributor.tickDates;
                 const isLowDeposit = contributor.deposit < contributor.regAmount;
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="border px-4 py-2">${contributor.name}</td>
+                    <td class="border px-4 py-2">${contributor.name} (${contributor.userName})</td>
                     <td class="border px-4 py-2">${contributor.regNo}</td>
                     <td class="border px-4 py-2">${contributor.month}</td>
                     <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
@@ -391,10 +487,11 @@
                         <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
                         ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
                         <div class="flex space-x-1 mt-1">
-                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
-                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded edit-btn" data-id="${contributor.id}">Edit</button>
-                            <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}">History</button>
-                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}">Delete</button>
+                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>- Withdraw</button>
+                            <button class="bg-purple-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>+ Add</button>
+                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded edit-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>Edit</button>
+                            <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">History</button>
+                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>Delete</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -406,7 +503,9 @@
                     <td class="border px-4 py-2 withdrawal-3">
                         ${withdrawals[2] ? `₦${withdrawals[2].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[2].date}</span>` : ''}
                     </td>
-                    <td class="border px-4 py-2 withdrawal-4"></td>
+                    <td class="border px-4 py-2 withdrawal-4">
+                        ${withdrawals[3] ? `₦${withdrawals[3].amount.toFixed(2)}<br><span class="text-xs text-gray-500">${withdrawals[3].date}</span>` : ''}
+                    </td>
                     <td class="border px-4 py-2">${tickDates.length}</td>
                     ${generateCheckboxes(tickDates, maxDayColumns)}
                 `;
@@ -416,9 +515,9 @@
 
         function updateHeaderDays(newMaxDays) {
             const headerRow = document.getElementById('table-header-row');
-            while (headerRow.children.length > 9) headerRow.removeChild(headerRow.lastChild);
+            while (headerRow.children.length > 10) headerRow.removeChild(headerRow.lastChild);
             headerRow.innerHTML = `
-                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                <th class="border px-4 py-2 min-w-[150px]">Name (User)</th>
                 <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
                 <th class="border px-4 py-2 min-w-[100px]">Month</th>
                 <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
@@ -448,6 +547,156 @@
                     </td>
                 `;
             }).join('');
+        }
+
+        // --- Daily Incomes Modal ---
+        function showDailyIconsModal() {
+            if (filteredContributors.length === 0) {
+                dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
+                dailyIconsModal.classList.remove('hidden');
+                return;
+            }
+
+            const allDeposits = filteredContributors.flatMap(contributor => {
+                const transactions = [];
+                if (contributor.deposit > 0) {
+                    transactions.push({
+                        contributorName: `${contributor.name} (${contributor.userName})`,
+                        amount: contributor.deposit,
+                        date: contributor.tickDates[0] || formatDate(new Date()),
+                        type: 'Initial Deposit',
+                        reason: 'Initial deposit'
+                    });
+                }
+                (contributor.correctionHistory || []).forEach(h => {
+                    if (h.newAmount > h.oldAmount) {
+                        transactions.push({
+                            contributorName: `${contributor.name} (${contributor.userName})`,
+                            amount: h.newAmount - h.oldAmount,
+                            date: h.date,
+                            type: 'Deposit',
+                            reason: h.reason
+                        });
+                    }
+                });
+                return transactions;
+            });
+
+            const depositsByDate = new Map();
+            allDeposits.forEach(dep => {
+                const dateStr = dep.date;
+                if (!depositsByDate.has(dateStr)) {
+                    depositsByDate.set(dateStr, new Map());
+                }
+                const contributorMap = depositsByDate.get(dateStr);
+                if (!contributorMap.has(dep.contributorName)) {
+                    contributorMap.set(dep.contributorName, { totalAmount: 0, reason: dep.reason });
+                }
+                contributorMap.get(dep.contributorName).totalAmount += dep.amount;
+            });
+
+            const sortedDates = Array.from(depositsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+            dailyIconsModalText.innerHTML = `
+                <div class="py-3 px-4">
+                    <h4 class="font-bold text-lg text-gray-800">Daily Incomes</h4>
+                    ${sortedDates.length > 0
+                        ? sortedDates.map(date => {
+                            const contributorMap = depositsByDate.get(date);
+                            const contributors = Array.from(contributorMap.entries());
+                            const dailyTotal = contributors.reduce((sum, [, data]) => sum + data.totalAmount, 0);
+                            return `
+                                <div class="mt-2">
+                                    <hr class="my-2 border-gray-300">
+                                    <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
+                                    ${contributors.map(([contributorName, data]) => `
+                                        <div class="py-1">
+                                            <p><strong>${contributorName} ${data.reason === 'Initial deposit' ? 'deposited' : 'added'} ₦${data.totalAmount.toFixed(2)}</strong></p>
+                                            <p class="text-xs text-gray-500">Reason: ${data.reason || 'No reason provided'}</p>
+                                        </div>
+                                    `).join('')}
+                                    <p class="font-semibold mt-2">Total: ₦${dailyTotal.toFixed(2)}</p>
+                                </div>
+                            `;
+                        }).join('')
+                        : '<p>No deposits recorded.</p>'}
+                </div>
+            `;
+            dailyIconsModal.classList.remove('hidden');
+        }
+
+        // --- Daily Payouts Modal ---
+        function showExpensesModal() {
+            if (filteredContributors.length === 0) {
+                expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
+                expensesModal.classList.remove('hidden');
+                return;
+            }
+
+            const allWithdrawals = filteredContributors.flatMap(contributor => {
+                const transactions = [];
+                (contributor.withdrawals || []).forEach((w, index) => {
+                    transactions.push({
+                        contributorName: `${contributor.name} (${contributor.userName})`,
+                        amount: w.amount,
+                        date: w.date,
+                        type: `Withdrawal ${index + 1}`,
+                        reason: 'Withdrawal'
+                    });
+                });
+                (contributor.correctionHistory || []).forEach(h => {
+                    if (h.newAmount < h.oldAmount) {
+                        transactions.push({
+                            contributorName: `${contributor.name} (${contributor.userName})`,
+                            amount: h.oldAmount - h.newAmount,
+                            date: h.date,
+                            type: 'Correction (Withdrawal)',
+                            reason: h.reason
+                        });
+                    }
+                });
+                return transactions;
+            });
+
+            const withdrawalsByDate = new Map();
+            allWithdrawals.forEach(w => {
+                const dateStr = w.date;
+                if (!withdrawalsByDate.has(dateStr)) {
+                    withdrawalsByDate.set(dateStr, new Map());
+                }
+                const contributorMap = withdrawalsByDate.get(dateStr);
+                if (!contributorMap.has(w.contributorName)) {
+                    contributorMap.set(w.contributorName, { totalAmount: 0, reason: w.reason });
+                }
+                contributorMap.get(w.contributorName).totalAmount += w.amount;
+            });
+
+            const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+            expensesModalText.innerHTML = `
+                <div class="py-3 px-4">
+                    <h4 class="font-bold text-lg text-gray-800">Daily Payout</h4>
+                    ${sortedDates.length > 0
+                        ? sortedDates.map(date => {
+                            const contributorMap = withdrawalsByDate.get(date);
+                            const contributors = Array.from(contributorMap.entries());
+                            const dailyTotal = contributors.reduce((sum, [, data]) => sum + data.totalAmount, 0);
+                            return `
+                                <div class="mt-2">
+                                    <hr class="my-2 border-gray-300">
+                                    <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
+                                    ${contributors.map(([contributorName, data]) => `
+                                        <div class="py-1">
+                                            <p><strong>${contributorName} withdrew ₦${data.totalAmount.toFixed(2)}</strong></p>
+                                            <p class="text-xs text-gray-500">Reason: ${data.reason || 'No reason provided'}</p>
+                                        </div>
+                                    `).join('')}
+                                    <p class="font-semibold mt-2">Total: ₦${dailyTotal.toFixed(2)}</p>
+                                </div>
+                            `;
+                        }).join('')
+                        : '<p>No withdrawals recorded.</p>'}
+                </div>
+            `;
+            expensesModal.classList.remove('hidden');
         }
 
         // --- Event Listeners ---
@@ -515,16 +764,40 @@
             }
         });
 
+        document.getElementById('daily-icons-modal-close').addEventListener('click', () => {
+            dailyIconsModal.classList.add('hidden');
+        });
+
+        document.getElementById('daily-icons-modal').addEventListener('click', (e) => {
+            if (e.target === dailyIconsModal) {
+                dailyIconsModal.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('expenses-modal-close').addEventListener('click', () => {
+            expensesModal.classList.add('hidden');
+        });
+
+        document.getElementById('expenses-modal').addEventListener('click', (e) => {
+            if (e.target === expensesModal) {
+                expensesModal.classList.add('hidden');
+            }
+        });
+
         document.getElementById('contribute-page-btn').addEventListener('click', () => {
-            window.location.href = 'admin-landpage.html'; // Assumes contribute page is named index.html
+            window.location.href = 'admin-landpage.html';
         });
 
         // --- Contributor Table Actions ---
-        document.addEventListener('click', function (e) {
-            if (e.target.classList.contains('withdraw-btn') || e.target.classList.contains('edit-btn') || e.target.classList.contains('history-btn') || e.target.classList.contains('delete-btn')) {
+        document.addEventListener('click', async function (e) {
+            if (e.target.classList.contains('withdraw-btn') || e.target.classList.contains('add-btn') || e.target.classList.contains('edit-btn') || e.target.classList.contains('history-btn') || e.target.classList.contains('delete-btn')) {
                 const contributorId = e.target.getAttribute('data-id');
-                const contributor = allContributors.find(c => c.id === contributorId);
+                const contributorUserId = e.target.getAttribute('data-user-id');
+                const contributor = allContributors.find(c => c.id === contributorId && c.userId === contributorUserId);
                 if (!contributor) return;
+
+                const userDoc = await getDoc(doc(db, "users", userId));
+                const isAdmin = userDoc.exists() && userDoc.data().role === "admin";
 
                 if (e.target.classList.contains('withdraw-btn')) {
                     showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount, selectedDate, reason) => {
@@ -533,16 +806,63 @@
                             return;
                         }
                         const withdrawals = contributor.withdrawals;
-                        if (withdrawals.length >= 3) {
-                            showMessage('Error', 'Maximum of 3 withdrawals reached.');
+                        if (withdrawals.length >= 4) {
+                            showMessage('Error', 'Maximum of 4 withdrawals reached.');
                             return;
                         }
                         const newDeposit = contributor.deposit - amount;
-                        const newWithdrawals = [...withdrawals, { amount, date: formatDate(selectedDate) }];
+                        const dateStr = formatDate(selectedDate);
+                        const newWithdrawals = [...withdrawals, { amount, date: dateStr }];
+                        const newCorrectionHistory = [
+                            ...contributor.correctionHistory,
+                            {
+                                oldAmount: contributor.deposit,
+                                newAmount: newDeposit,
+                                date: dateStr,
+                                reason: reason || 'Withdrawal'
+                            }
+                        ];
                         updateContributor(contributorId, {
                             deposit: newDeposit,
-                            withdrawals: newWithdrawals
-                        });
+                            withdrawals: newWithdrawals,
+                            correctionHistory: newCorrectionHistory
+                        }, contributorUserId);
+                    });
+                } else if (e.target.classList.contains('add-btn')) {
+                    showInputModal('+ Add Amount', 'Enter amount to add', 'Add', (amount, selectedDate, reason) => {
+                        const newDeposit = contributor.deposit + amount;
+                        const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
+                        const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
+                        if (totalTicks > 31) {
+                            showMessage('Error', 'Adding this amount would exceed the maximum of 31 ticks.');
+                            return;
+                        }
+                        const prevTicks = contributor.tickDates.length;
+                        const additionalTicks = totalTicks - prevTicks;
+                        let newTickDates = [...contributor.tickDates];
+                        const dateStr = formatDate(selectedDate);
+                        for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
+                            newTickDates[i] = dateStr;
+                        }
+                        newTickDates = newTickDates
+                            .map((date, index) => ({ date, index }))
+                            .sort((a, b) => new Date(a.date) - new Date(b.date))
+                            .map(item => item.date);
+                        const newCorrectionHistory = [
+                            ...contributor.correctionHistory,
+                            {
+                                oldAmount: contributor.deposit,
+                                newAmount: newDeposit,
+                                date: dateStr,
+                                reason: reason || 'Deposit added'
+                            }
+                        ];
+                        updateContributor(contributorId, {
+                            deposit: newDeposit,
+                            totalContributions: newTotalContributions,
+                            tickDates: newTickDates,
+                            correctionHistory: newCorrectionHistory
+                        }, contributorUserId);
                     });
                 } else if (e.target.classList.contains('edit-btn')) {
                     document.getElementById('edit-name').value = contributor.name;
@@ -559,10 +879,14 @@
                             showMessage('Error', 'Please enter valid positive numbers for Registration Amount and Deposit.');
                             return;
                         }
-                        const daysTicked = Math.floor(deposit / regAmount);
+                        const totalTicks = Math.floor(deposit / regAmount);
+                        if (totalTicks > 31) {
+                            showMessage('Error', 'Deposit would result in more than 31 ticks.');
+                            return;
+                        }
                         const tickDates = [];
                         const todayStr = formatDate(new Date());
-                        for (let i = 0; i < daysTicked; i++) tickDates[i] = todayStr;
+                        for (let i = 0; i < totalTicks; i++) tickDates[i] = todayStr;
                         const updatedContributor = {
                             name: editForm['edit-name'].value,
                             regNo: editForm['edit-reg-no'].value,
@@ -570,12 +894,21 @@
                             regAmount,
                             deposit,
                             totalContributions: deposit,
-                            tickDates
+                            tickDates,
+                            correctionHistory: [
+                                ...contributor.correctionHistory,
+                                {
+                                    oldAmount: contributor.deposit,
+                                    newAmount: deposit,
+                                    date: todayStr,
+                                    reason: 'Edited contributor details'
+                                }
+                            ]
                         };
                         try {
                             editForm.querySelector('button').disabled = true;
                             editForm.querySelector('button').textContent = 'Updating...';
-                            await updateContributor(contributorId, updatedContributor);
+                            await updateContributor(contributorId, updatedContributor, contributorUserId);
                             editModal.classList.add('hidden');
                             showMessage('Success', 'Contributor updated successfully!');
                         } catch (error) {
@@ -589,11 +922,14 @@
                     showHistoryModal(contributor.correctionHistory);
                 } else if (e.target.classList.contains('delete-btn')) {
                     showConfirmationModal('Confirm Deletion', 'Are you sure you want to delete this contributor? This action cannot be undone.', () => {
-                        deleteContributor(contributorId);
+                        deleteContributor(contributorId, contributorUserId);
                     });
                 }
             }
         });
+
+        document.getElementById('show-daily-icons-btn').addEventListener('click', showDailyIconsModal);
+        document.getElementById('show-expenses-btn').addEventListener('click', showExpensesModal);
 
         window.onload = initializeFirebase;
     </script>
@@ -640,13 +976,19 @@
 
     <!-- --- Dashboard Container --- -->
     <div id="dashboard-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;">DAILY CONTRIBUTION ACTIVITY DASHBOARD</h1>
+        <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;"> DAILY ACTIVITY DASHBOARD</h1>
         <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
         <div class="flex justify-between items-center mb-6">
             <div></div> <!-- Placeholder to maintain layout -->
             <div class="flex space-x-4">
                 <button id="contribute-page-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Main Menu Home
+                </button>
+                <button id="show-daily-icons-btn" class="bg-teal-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300">
+                    Daily Incomes
+                </button>
+                <button id="show-expenses-btn" class="bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-orange-700 transition duration-300">
+                    Daily Payout
                 </button>
                 <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
                     Logout
@@ -660,11 +1002,29 @@
             </div>
             <div id="table-container" class="hidden">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Contributors</h2>
+                <div class="flex space-x-4 mb-4">
+                    <input id="search-input" type="text" placeholder="Search by Name, Reg No, or User" class="w-full border px-4 py-2 rounded-lg" />
+                    <select id="search-month" class="border px-4 py-2 rounded-lg">
+                        <option value="">All Months</option>
+                        <option>January</option>
+                        <option>February</option>
+                        <option>March</option>
+                        <option>April</option>
+                        <option>May</option>
+                        <option>June</option>
+                        <option>July</option>
+                        <option>August</option>
+                        <option>September</option>
+                        <option>October</option>
+                        <option>November</option>
+                        <option>December</option>
+                    </select>
+                </div>
                 <div class="overflow-x-auto rounded-lg shadow-md">
                     <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
                         <thead class="bg-blue-200 text-gray-800" id="table-head">
                             <tr id="table-header-row">
-                                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                                <th class="border px-4 py-2 min-w-[150px]">Name (User)</th>
                                 <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
                                 <th class="border px-4 py-2 min-w-[100px]">Month</th>
                                 <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
@@ -683,7 +1043,7 @@
         </div>
     </div>
 
-    <!-- --- Custom Input Modal (for Withdrawals/Corrections) --- -->
+    <!-- --- Custom Input Modal (for Withdrawals/Additions) --- -->
     <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -785,6 +1145,36 @@
                 <input type="number" id="edit-deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
                 <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Update Entry</button>
             </form>
+        </div>
+    </div>
+
+    <!-- --- Daily Incomes Modal --- -->
+    <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
+                <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="daily-icons-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- --- Expenses Modal --- -->
+    <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Payout</h3>
+                <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="expenses-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
         </div>
     </div>
 </body>
