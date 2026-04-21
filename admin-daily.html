@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin || Daily Contribution</title>
+    <title>Admin || JANUARY Contribution</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
         input[type="checkbox"]:checked { accent-color: green; }
         input[type="checkbox"] { accent-color: green; }
+        .book-tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; }
+        .book-tab.active { border-bottom-color: #3b82f6; color: #3b82f6; }
+        .book-tab:hover { background-color: #f3f4f6; }
     </style>
 </head>
 <body class="p-6 bg-gray-50 font-sans min-h-screen flex items-center justify-center">
@@ -36,6 +39,10 @@
         let allContributors = [];
         let filteredContributors = [];
         let maxDayColumns = 0;
+        let selectedBook = "Book A";
+        let selectedMonth = "";
+        window.firestoreUnsubscribers = [];
+        window.setupListenersInitialized = false;
 
         // --- DOM Elements ---
         const loginContainer = document.getElementById('login-container');
@@ -126,7 +133,7 @@
             messageModal.classList.remove('hidden');
             setTimeout(() => {
                 messageModal.classList.add('hidden');
-            }, 3000); // Auto-close after 3 seconds
+            }, 3000);
         }
 
         // --- Show Authentication Form ---
@@ -262,95 +269,136 @@
         }
 
         // --- Firestore Data Handling ---
-        async function setupFirestoreListener(isAdmin) {
-            if (!userId) return;
-            allContributors = [];
-            filteredContributors = [];
+async function setupFirestoreListener(isAdmin) {
+    if (!userId) return;
+    
+    // Clean up existing listeners FIRST
+    if (window.firestoreUnsubscribers && window.firestoreUnsubscribers.length > 0) {
+        window.firestoreUnsubscribers.forEach(unsub => unsub());
+        window.firestoreUnsubscribers = [];
+    }
+    
+    allContributors = [];
+    window.setupListenersInitialized = true;
 
-            if (isAdmin) {
-                // Fetch all users
-                // Fetch all users from the root "users" collection and prepare their contributors collections
-                const usersSnapshot = await getDocs(collection(db, "users"));
-                const userPromises = usersSnapshot.docs.map(async userDoc => {
-                    const uid = userDoc.id;
-                    const userName = (userDoc.data() && userDoc.data().name) ? userDoc.data().name : "Unknown User";
-                    const contributorCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/dailycontributors`);
-                    return { userId: uid, userName, contributorCollectionRef };
-                });
-                const usersData = await Promise.all(userPromises);
-
-                // Set up listeners for each user's contributors
-                usersData.forEach(({ userId: contributorUserId, userName, contributorCollectionRef }) => {
-                    onSnapshot(contributorCollectionRef, (snapshot) => {
-                        const contributors = snapshot.docs.map(doc => {
-                            let data = doc.data();
-                            if (!Array.isArray(data.tickDates)) data.tickDates = [];
-                            if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
-                            if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
-                            if (typeof data.totalContributions !== 'number') {
-                                data.totalContributions = data.deposit || 0;
-                            }
-                            data.tickDates = data.tickDates
-                                .map((date, index) => ({ date, index }))
-                                .sort((a, b) => new Date(a.date) - new Date(b.date))
-                                .map(item => item.date);
-                            return {
-                                id: doc.id,
-                                userId: contributorUserId,
-                                userName,
-                                ...data
-                            };
-                        });
-                        // Update allContributors by merging new data
-                        allContributors = allContributors.filter(c => c.userId !== contributorUserId).concat(contributors);
-                        filteredContributors = [...allContributors];
-                        renderActivityLog();
-                        renderContributorTable();
-                        if (allContributors.length > 0) tableContainer.classList.remove('hidden');
-                    }, (error) => {
-                        showMessage('Error', 'Failed to load contributor data.');
-                    });
-                });
-            } else {
-                // Non-admin: fetch only own contributors
-                const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/dailycontributors`);
-                onSnapshot(contributorsCollectionRef, (snapshot) => {
-                    allContributors = snapshot.docs.map(doc => {
-                        let data = doc.data();
-                        if (!Array.isArray(data.tickDates)) data.tickDates = [];
-                        if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
-                        if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
-                        if (typeof data.totalContributions !== 'number') {
-                            data.totalContributions = data.deposit || 0;
-                        }
-                        data.tickDates = data.tickDates
-                            .map((date, index) => ({ date, index }))
-                            .sort((a, b) => new Date(a.date) - new Date(b.date))
-                            .map(item => item.date);
-                        return { id: doc.id, userId, userName, ...data };
-                    });
-                    filteredContributors = [...allContributors];
-                    renderActivityLog();
-                    renderContributorTable();
-                    if (allContributors.length > 0) tableContainer.classList.remove('hidden');
-                }, (error) => {
-                    showMessage('Error', 'Failed to load contributor data.');
-                });
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        
+        // Helper to normalize contributor data
+        const normalizeContributor = (docSnap, uid, displayName, userBook) => {
+            let data = docSnap.data() || {};
+            if (!Array.isArray(data.tickDates)) data.tickDates = [];
+            if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
+            if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
+            if (typeof data.totalContributions !== 'number') {
+                data.totalContributions = data.deposit || 0;
             }
-        }
+            data.tickDates = data.tickDates
+                .filter(d => d)
+                .map((date, index) => ({ date, index }))
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .map(item => item.date);
+
+            return {
+                id: docSnap.id,
+                userId: uid,
+                userName: displayName,
+                userBook: userBook,
+                ...data
+            };
+        };
+
+        // SET UP REAL-TIME LISTENERS for ALL users (including current user)
+        usersSnap.docs.forEach((userDoc) => {
+            const uid = userDoc.id;
+            const userData = userDoc.data() || {};
+            const displayName = userData.name || userData.email?.split('@')[0] || "Unknown";
+            const userBook = userData.book || "—";
+
+            const colRef = collection(db, `artifacts/${appId}/users/${uid}/dailycontributors`);
+            
+            // Real-time listener for contributors
+            const unsubscribe = onSnapshot(colRef, (snap) => {
+                // **KEY FIX**: Map snap.docs to a Map for deduplication BEFORE adding to allContributors
+                const newContributorsMap = new Map();
+                
+                snap.docs.forEach(doc => {
+                    const normalized = normalizeContributor(doc, uid, displayName, userBook);
+                    newContributorsMap.set(`${normalized.id}_${normalized.userId}`, normalized);
+                });
+                
+                // Remove old contributors for this user
+                allContributors = allContributors.filter(c => c.userId !== uid);
+                
+                // Add new contributors from the map (eliminates duplicates)
+                allContributors.push(...Array.from(newContributorsMap.values()));
+                
+                // Sort globally
+                allContributors.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+                
+                // Render
+                filterAndRender();
+                if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+                
+            }, (error) => {
+                console.error("Real-time listener error for user " + uid + ":", error);
+            });
+            
+            window.firestoreUnsubscribers.push(unsubscribe);
+        });
+
+    } catch (err) {
+        console.error("Admin load failed:", err);
+        showMessage('Error', 'Failed to load all contributors. Please refresh.');
+    }
+}
+
+
+        // --- Filter and Render ---
+        function filterAndRender() {
+    const query = searchInput.value.toLowerCase().trim();
+    
+    // **AGGRESSIVE DEDUPLICATION**: Use Map to eliminate duplicates
+    const uniqueMap = new Map();
+    allContributors.forEach(c => {
+        const key = `${c.id}_${c.userId}`;
+        uniqueMap.set(key, c);
+    });
+    
+    // Update allContributors to remove any duplicates
+    allContributors = Array.from(uniqueMap.values());
+    
+    filteredContributors = allContributors.filter(contributor => {
+        const matchesSearch = query === '' ||
+            contributor.name.toLowerCase().includes(query) ||
+            contributor.regNo.toLowerCase().includes(query) ||
+            contributor.userName.toLowerCase().includes(query);
+        
+        const matchesBook = selectedBook === "All Books" || contributor.userBook === selectedBook;
+        
+        const matchesMonth = selectedMonth === '' || contributor.month.toLowerCase() === selectedMonth.toLowerCase();
+        
+        return matchesSearch && matchesBook && matchesMonth;
+    });
+    
+    renderActivityLog();
+    renderContributorTable();
+}
+
+        // --- Book Tab Selection ---
+        document.querySelectorAll('.book-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.book-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                selectedBook = tab.getAttribute('data-book');
+                filterAndRender();
+            });
+        });
 
         async function updateContributor(id, data, contributorUserId) {
             if (!userId) return;
             try {
                 const contributorDocRef = doc(db, `artifacts/${appId}/users/${contributorUserId}/dailycontributors`, id);
-                const contributorSnap = await getDoc(contributorDocRef);
-                if (contributorSnap.exists() && contributorUserId !== userId) {
-                    const userDoc = await getDoc(doc(db, "users", userId));
-                    if (!userDoc.exists() || userDoc.data().role !== "admin") {
-                        showMessage('Error', 'You are not authorized to update this contributor.');
-                        return;
-                    }
-                }
                 await updateDoc(contributorDocRef, data);
                 showMessage('Success', 'Contributor updated successfully!');
             } catch (error) {
@@ -362,14 +410,6 @@
             if (!userId) return;
             try {
                 const contributorDocRef = doc(db, `artifacts/${appId}/users/${contributorUserId}/dailycontributors`, id);
-                const contributorSnap = await getDoc(contributorDocRef);
-                if (contributorSnap.exists() && contributorUserId !== userId) {
-                    const userDoc = await getDoc(doc(db, "users", userId));
-                    if (!userDoc.exists() || userDoc.data().role !== "admin") {
-                        showMessage('Error', 'You are not authorized to delete this contributor.');
-                        return;
-                    }
-                }
                 await deleteDoc(contributorDocRef);
                 showMessage('Success', 'Contributor deleted successfully!');
             } catch (error) {
@@ -378,74 +418,34 @@
         }
 
         // --- Search and Filter Functionality ---
-        function filterContributors() {
-            const query = searchInput.value.toLowerCase().trim();
-            const selectedMonth = searchMonth.value.toLowerCase();
-            filteredContributors = allContributors.filter(contributor => {
-                const matchesSearch = query === '' ||
-                    contributor.name.toLowerCase().includes(query) ||
-                    contributor.regNo.toLowerCase().includes(query) ||
-                    contributor.userName.toLowerCase().includes(query);
-                const matchesMonth = selectedMonth === '' || contributor.month.toLowerCase() === selectedMonth;
-                return matchesSearch && matchesMonth;
-            });
-            renderContributorTable();
-        }
-
-        searchInput.addEventListener('input', filterContributors);
-        searchMonth.addEventListener('change', filterContributors);
+        searchInput.addEventListener('input', filterAndRender);
+        searchMonth.addEventListener('change', (e) => {
+            selectedMonth = e.target.value;
+            filterAndRender();
+        });
 
         // --- Render Activity Log ---
         function renderActivityLog() {
             const activitiesByDate = new Map();
             filteredContributors.forEach(contributor => {
-                // Aggregate initial deposit
                 if (contributor.deposit > 0 && contributor.tickDates.length > 0) {
                     const date = contributor.tickDates[0];
                     if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
                     const contributorMap = activitiesByDate.get(date);
-                    const key = `${contributor.name} (${contributor.userName})`;
+                    const key = `${contributor.name} (${contributor.userName}) [${contributor.userBook}]`;
                     if (!contributorMap.has(key)) {
                         contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
                     }
                     contributorMap.get(key).totalAmount += contributor.deposit;
                 }
-                // Aggregate additional deposits from tickDates (excluding initial)
-                contributor.tickDates.forEach((date, index) => {
-                    if (index > 0 || contributor.deposit > contributor.regAmount) {
-                        const amount = contributor.regAmount;
-                        if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
-                        const contributorMap = activitiesByDate.get(date);
-                        const key = `${contributor.name} (${contributor.userName})`;
-                        if (!contributorMap.has(key)) {
-                            contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: 'added' });
-                        }
-                        contributorMap.get(key).totalAmount += amount;
-                    }
-                });
-                // Aggregate withdrawals
                 contributor.withdrawals.forEach(withdrawal => {
                     if (!activitiesByDate.has(withdrawal.date)) activitiesByDate.set(withdrawal.date, new Map());
                     const contributorMap = activitiesByDate.get(withdrawal.date);
-                    const key = `${contributor.name} (${contributor.userName})`;
+                    const key = `${contributor.name} (${contributor.userName}) [${contributor.userBook}]`;
                     if (!contributorMap.has(key)) {
                         contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: 'withdrawn' });
                     }
                     contributorMap.get(key).totalAmount += withdrawal.amount;
-                });
-                // Aggregate corrections
-                contributor.correctionHistory.forEach(correction => {
-                    const diff = correction.newAmount - correction.oldAmount;
-                    if (diff !== 0) {
-                        const date = correction.date;
-                        if (!activitiesByDate.has(date)) activitiesByDate.set(date, new Map());
-                        const contributorMap = activitiesByDate.get(date);
-                        const key = `${contributor.name} (${contributor.userName})`;
-                        if (!contributorMap.has(key)) {
-                            contributorMap.set(key, { totalAmount: 0, regNo: contributor.regNo, type: diff > 0 ? 'added' : 'withdrawn' });
-                        }
-                        contributorMap.get(key).totalAmount += Math.abs(diff);
-                    }
                 });
             });
 
@@ -465,21 +465,36 @@
         // --- Render Contributor Table ---
         async function renderContributorTable() {
             contributorTableBody.innerHTML = '';
-            const allDaysTicked = filteredContributors.map(c => c.tickDates.length);
-            const newMaxDays = Math.min(31, Math.max(1, ...allDaysTicked));
+            
+            // Remove duplicates from filtered contributors
+            const seen = new Set();
+            const uniqueFiltered = filteredContributors.filter(c => {
+                const key = `${c.id}_${c.userId}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+            
+            const allDaysTicked = uniqueFiltered.map(c => c.tickDates.length);
+            const newMaxDays = Math.min(31, Math.max(1, ...allDaysTicked, 0));
+            
             if (newMaxDays > maxDayColumns) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
             }
+            
             const userDoc = await getDoc(doc(db, "users", userId));
             const isAdmin = userDoc.exists() && userDoc.data().role === "admin";
-            filteredContributors.forEach(contributor => {
+            
+            uniqueFiltered.forEach(contributor => {
                 const withdrawals = contributor.withdrawals;
                 const tickDates = contributor.tickDates;
                 const isLowDeposit = contributor.deposit < contributor.regAmount;
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="border px-4 py-2">${contributor.name} (${contributor.userName})</td>
+                    <td class="border px-4 py-2">${contributor.name}</td>
+                    <td class="border px-4 py-2">${contributor.userName}</td>
+                    <td class="border px-4 py-2">${contributor.userBook}</td>
                     <td class="border px-4 py-2">${contributor.regNo}</td>
                     <td class="border px-4 py-2">${contributor.month}</td>
                     <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
@@ -487,11 +502,11 @@
                         <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
                         ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
                         <div class="flex space-x-1 mt-1">
-                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>- Withdraw</button>
-                            <button class="bg-purple-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>+ Add</button>
-                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded edit-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>Edit</button>
+                            <button class="bg-red-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">- Withdraw</button>
+                            <button class="bg-purple-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">+ Add</button>
+                            <button class="bg-yellow-600 text-white text-xs px-2 py-1 rounded edit-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">Edit</button>
                             <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded history-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">History</button>
-                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}" ${contributor.userId !== userId && !isAdmin ? 'disabled' : ''}>Delete</button>
+                            <button class="bg-gray-600 text-white text-xs px-2 py-1 rounded delete-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">Delete</button>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -515,9 +530,10 @@
 
         function updateHeaderDays(newMaxDays) {
             const headerRow = document.getElementById('table-header-row');
-            while (headerRow.children.length > 10) headerRow.removeChild(headerRow.lastChild);
             headerRow.innerHTML = `
-                <th class="border px-4 py-2 min-w-[150px]">Name (User)</th>
+                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                <th class="border px-4 py-2 min-w-[120px]">User</th>
+                <th class="border px-4 py-2 min-w-[80px]">Book</th>
                 <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
                 <th class="border px-4 py-2 min-w-[100px]">Month</th>
                 <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
@@ -549,7 +565,7 @@
             }).join('');
         }
 
-        // --- Daily Incomes Modal ---
+        // --- Daily Incomes Modal with Download ---
         function showDailyIconsModal() {
             if (filteredContributors.length === 0) {
                 dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
@@ -565,20 +581,10 @@
                         amount: contributor.deposit,
                         date: contributor.tickDates[0] || formatDate(new Date()),
                         type: 'Initial Deposit',
-                        reason: 'Initial deposit'
+                        reason: 'Initial deposit',
+                        book: contributor.userBook
                     });
                 }
-                (contributor.correctionHistory || []).forEach(h => {
-                    if (h.newAmount > h.oldAmount) {
-                        transactions.push({
-                            contributorName: `${contributor.name} (${contributor.userName})`,
-                            amount: h.newAmount - h.oldAmount,
-                            date: h.date,
-                            type: 'Deposit',
-                            reason: h.reason
-                        });
-                    }
-                });
                 return transactions;
             });
 
@@ -586,35 +592,46 @@
             allDeposits.forEach(dep => {
                 const dateStr = dep.date;
                 if (!depositsByDate.has(dateStr)) {
-                    depositsByDate.set(dateStr, new Map());
+                    depositsByDate.set(dateStr, []);
                 }
-                const contributorMap = depositsByDate.get(dateStr);
-                if (!contributorMap.has(dep.contributorName)) {
-                    contributorMap.set(dep.contributorName, { totalAmount: 0, reason: dep.reason });
-                }
-                contributorMap.get(dep.contributorName).totalAmount += dep.amount;
+                depositsByDate.get(dateStr).push(dep);
             });
 
             const sortedDates = Array.from(depositsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
             dailyIconsModalText.innerHTML = `
                 <div class="py-3 px-4">
-                    <h4 class="font-bold text-lg text-gray-800">Daily Incomes</h4>
+                    <div class="flex justify-between mb-4">
+                        <h4 class="font-bold text-lg text-gray-800">Daily Income Statement - ${selectedBook}</h4>
+                        <button onclick="downloadIncomeCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm">📥 Download CSV</button>
+                    </div>
                     ${sortedDates.length > 0
                         ? sortedDates.map(date => {
-                            const contributorMap = depositsByDate.get(date);
-                            const contributors = Array.from(contributorMap.entries());
-                            const dailyTotal = contributors.reduce((sum, [, data]) => sum + data.totalAmount, 0);
+                            const items = depositsByDate.get(date);
+                            const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
                             return `
-                                <div class="mt-2">
-                                    <hr class="my-2 border-gray-300">
-                                    <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
-                                    ${contributors.map(([contributorName, data]) => `
-                                        <div class="py-1">
-                                            <p><strong>${contributorName} ${data.reason === 'Initial deposit' ? 'deposited' : 'added'} ₦${data.totalAmount.toFixed(2)}</strong></p>
-                                            <p class="text-xs text-gray-500">Reason: ${data.reason || 'No reason provided'}</p>
-                                        </div>
-                                    `).join('')}
-                                    <p class="font-semibold mt-2">Total: ₦${dailyTotal.toFixed(2)}</p>
+                                <div class="mt-2 p-3 bg-green-50 border-l-4 border-green-500 rounded">
+                                    <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
+                                    <table class="w-full text-sm mt-2 border-collapse">
+                                        <thead class="bg-green-100">
+                                            <tr>
+                                                <th class="border px-2 py-1 text-left">Contributor</th>
+                                                <th class="border px-2 py-1 text-left">Book</th>
+                                                <th class="border px-2 py-1 text-right">Amount (₦)</th>
+                                                <th class="border px-2 py-1 text-left">Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${items.map(item => `
+                                                <tr class="border-b">
+                                                    <td class="border px-2 py-1">${item.contributorName}</td>
+                                                    <td class="border px-2 py-1">${item.book}</td>
+                                                    <td class="border px-2 py-1 text-right font-semibold text-green-600">₦${item.amount.toFixed(2)}</td>
+                                                    <td class="border px-2 py-1">${item.type}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                    <p class="font-semibold mt-2 text-green-700">Daily Total: ₦${dailyTotal.toFixed(2)}</p>
                                 </div>
                             `;
                         }).join('')
@@ -622,9 +639,12 @@
                 </div>
             `;
             dailyIconsModal.classList.remove('hidden');
+
+            // Store data globally for download
+            window.currentIncomeData = allDeposits;
         }
 
-        // --- Daily Payouts Modal ---
+        // --- Daily Payouts Modal with Download ---
         function showExpensesModal() {
             if (filteredContributors.length === 0) {
                 expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
@@ -640,19 +660,9 @@
                         amount: w.amount,
                         date: w.date,
                         type: `Withdrawal ${index + 1}`,
-                        reason: 'Withdrawal'
+                        reason: 'Withdrawal',
+                        book: contributor.userBook
                     });
-                });
-                (contributor.correctionHistory || []).forEach(h => {
-                    if (h.newAmount < h.oldAmount) {
-                        transactions.push({
-                            contributorName: `${contributor.name} (${contributor.userName})`,
-                            amount: h.oldAmount - h.newAmount,
-                            date: h.date,
-                            type: 'Correction (Withdrawal)',
-                            reason: h.reason
-                        });
-                    }
                 });
                 return transactions;
             });
@@ -661,35 +671,46 @@
             allWithdrawals.forEach(w => {
                 const dateStr = w.date;
                 if (!withdrawalsByDate.has(dateStr)) {
-                    withdrawalsByDate.set(dateStr, new Map());
+                    withdrawalsByDate.set(dateStr, []);
                 }
-                const contributorMap = withdrawalsByDate.get(dateStr);
-                if (!contributorMap.has(w.contributorName)) {
-                    contributorMap.set(w.contributorName, { totalAmount: 0, reason: w.reason });
-                }
-                contributorMap.get(w.contributorName).totalAmount += w.amount;
+                withdrawalsByDate.get(dateStr).push(w);
             });
 
             const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
             expensesModalText.innerHTML = `
                 <div class="py-3 px-4">
-                    <h4 class="font-bold text-lg text-gray-800">Daily Payout</h4>
+                    <div class="flex justify-between mb-4">
+                        <h4 class="font-bold text-lg text-gray-800">Daily Payout Statement - ${selectedBook}</h4>
+                        <button onclick="downloadPayoutCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm">📥 Download CSV</button>
+                    </div>
                     ${sortedDates.length > 0
                         ? sortedDates.map(date => {
-                            const contributorMap = withdrawalsByDate.get(date);
-                            const contributors = Array.from(contributorMap.entries());
-                            const dailyTotal = contributors.reduce((sum, [, data]) => sum + data.totalAmount, 0);
+                            const items = withdrawalsByDate.get(date);
+                            const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
                             return `
-                                <div class="mt-2">
-                                    <hr class="my-2 border-gray-300">
-                                    <p class="text-lg font-semibold text-gray-800">Date: ${date}</p>
-                                    ${contributors.map(([contributorName, data]) => `
-                                        <div class="py-1">
-                                            <p><strong>${contributorName} withdrew ₦${data.totalAmount.toFixed(2)}</strong></p>
-                                            <p class="text-xs text-gray-500">Reason: ${data.reason || 'No reason provided'}</p>
-                                        </div>
-                                    `).join('')}
-                                    <p class="font-semibold mt-2">Total: ₦${dailyTotal.toFixed(2)}</p>
+                                <div class="mt-2 p-3 bg-orange-50 border-l-4 border-orange-500 rounded">
+                                    <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
+                                    <table class="w-full text-sm mt-2 border-collapse">
+                                        <thead class="bg-orange-100">
+                                            <tr>
+                                                <th class="border px-2 py-1 text-left">Contributor</th>
+                                                <th class="border px-2 py-1 text-left">Book</th>
+                                                <th class="border px-2 py-1 text-right">Amount (₦)</th>
+                                                <th class="border px-2 py-1 text-left">Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${items.map(item => `
+                                                <tr class="border-b">
+                                                    <td class="border px-2 py-1">${item.contributorName}</td>
+                                                    <td class="border px-2 py-1">${item.book}</td>
+                                                    <td class="border px-2 py-1 text-right font-semibold text-red-600">-₦${item.amount.toFixed(2)}</td>
+                                                    <td class="border px-2 py-1">${item.type}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                    <p class="font-semibold mt-2 text-red-700">Daily Total: -₦${dailyTotal.toFixed(2)}</p>
                                 </div>
                             `;
                         }).join('')
@@ -697,13 +718,53 @@
                 </div>
             `;
             expensesModal.classList.remove('hidden');
+
+            // Store data globally for download
+            window.currentPayoutData = allWithdrawals;
         }
+
+        // --- Download Functions ---
+        window.downloadIncomeCSV = function() {
+            const data = window.currentIncomeData || [];
+            let csv = "Date,Contributor,Book,Amount,Type\n";
+            data.forEach(row => {
+                csv += `"${row.date}","${row.contributorName}","${row.book}",${row.amount},"${row.type}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `income_statement_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        };
+
+        window.downloadPayoutCSV = function() {
+            const data = window.currentPayoutData || [];
+            let csv = "Date,Contributor,Book,Amount,Type\n";
+            data.forEach(row => {
+                csv += `"${row.date}","${row.contributorName}","${row.book}",${row.amount},"${row.type}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `payout_statement_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        };
 
         // --- Event Listeners ---
         logoutBtn.addEventListener('click', async () => {
             try {
                 logoutBtn.disabled = true;
                 logoutBtn.textContent = 'Logging out...';
+                
+                // Unsubscribe all listeners
+                if (window.firestoreUnsubscribers) {
+                    window.firestoreUnsubscribers.forEach(unsubscribe => unsubscribe());
+                    window.firestoreUnsubscribers = [];
+                }
+                window.setupListenersInitialized = false;
+                
                 await signOut(auth);
                 showMessage('Success', 'Logged out successfully!');
             } catch (error) {
@@ -795,9 +856,6 @@
                 const contributorUserId = e.target.getAttribute('data-user-id');
                 const contributor = allContributors.find(c => c.id === contributorId && c.userId === contributorUserId);
                 if (!contributor) return;
-
-                const userDoc = await getDoc(doc(db, "users", userId));
-                const isAdmin = userDoc.exists() && userDoc.data().role === "admin";
 
                 if (e.target.classList.contains('withdraw-btn')) {
                     showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount, selectedDate, reason) => {
@@ -976,10 +1034,20 @@
 
     <!-- --- Dashboard Container --- -->
     <div id="dashboard-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-blue-600 mb-6" style="font-family: 'Courier New', Courier, monospace;"> DAILY ACTIVITY DASHBOARD</h1>
-        <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-2"></div>
+        <h1 class="text-2xl font-bold text-blue-600 mb-2" style="font-family: 'Courier New', Courier, monospace;">ADMIN DAILY DASHBOARD</h1>
+        <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-4"></div>
+        
+        <!-- Book Tabs -->
+        <div class="flex space-x-2 mb-4 bg-white rounded-lg p-2 shadow-md">
+            <button class="book-tab active" data-book="Book A">📖 Book A</button>
+            <button class="book-tab" data-book="Book B">📖 Book B</button>
+            <button class="book-tab" data-book="Book C">📖 Book C</button>
+            <button class="book-tab" data-book="Book D">📖 Book D</button>
+            <button class="book-tab" data-book="All Books">📚 All Books</button>
+        </div>
+
         <div class="flex justify-between items-center mb-6">
-            <div></div> <!-- Placeholder to maintain layout -->
+            <div></div>
             <div class="flex space-x-4">
                 <button id="contribute-page-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
                     Main Menu Home
@@ -995,12 +1063,13 @@
                 </button>
             </div>
         </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Activity Log</h2>
-                <div id="activity-log" class="text-sm text-gray-700"></div>
+                <div id="activity-log" class="text-sm text-gray-700 max-h-[500px] overflow-y-auto"></div>
             </div>
-            <div id="table-container" class="hidden">
+            <div id="table-container" class="hidden col-span-1 md:col-span-2">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Contributors</h2>
                 <div class="flex space-x-4 mb-4">
                     <input id="search-input" type="text" placeholder="Search by Name, Reg No, or User" class="w-full border px-4 py-2 rounded-lg" />
@@ -1024,7 +1093,9 @@
                     <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
                         <thead class="bg-blue-200 text-gray-800" id="table-head">
                             <tr id="table-header-row">
-                                <th class="border px-4 py-2 min-w-[150px]">Name (User)</th>
+                                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                                <th class="border px-4 py-2 min-w-[120px]">User</th>
+                                <th class="border px-4 py-2 min-w-[80px]">Book</th>
                                 <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
                                 <th class="border px-4 py-2 min-w-[100px]">Month</th>
                                 <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
@@ -1043,7 +1114,7 @@
         </div>
     </div>
 
-    <!-- --- Custom Input Modal (for Withdrawals/Additions) --- -->
+    <!-- --- Custom Input Modal --- -->
     <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1108,7 +1179,7 @@
                     </svg>
                 </button>
             </div>
-            <div id="history-modal-text" class="text-gray-700"></div>
+            <div id="history-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
         </div>
     </div>
 
@@ -1150,7 +1221,7 @@
 
     <!-- --- Daily Incomes Modal --- -->
     <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
                 <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
@@ -1159,13 +1230,13 @@
                     </svg>
                 </button>
             </div>
-            <div id="daily-icons-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
+            <div id="daily-icons-modal-text" class="text-gray-700"></div>
         </div>
     </div>
 
     <!-- --- Expenses Modal --- -->
     <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-800">Daily Payout</h3>
                 <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
@@ -1174,7 +1245,7 @@
                     </svg>
                 </button>
             </div>
-            <div id="expenses-modal-text" class="text-gray-700 max-h-[60vh] overflow-y-auto"></div>
+            <div id="expenses-modal-text" class="text-gray-700"></div>
         </div>
     </div>
 </body>
