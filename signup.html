@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROSPEROUS CO-OPERATIVE - Sign Up</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
+        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px; }
+        .book-btn { 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            font-weight: 600;
+            background-color: #f3f4f6;
+            text-align: center;
+        }
+        .book-btn:hover { 
+            background-color: #e5e7eb; 
+            border-color: #3b82f6; 
+        }
+        .book-btn.selected { 
+            background-color: #3b82f6; 
+            color: white; 
+            border-color: #3b82f6; 
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-200 min-h-screen flex items-center justify-center">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+            authDomain: "contribution-c5309.firebaseapp.com",
+            projectId: "contribution-c5309",
+            messagingSenderId: "800641687170",
+            appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+            measurementId: "G-DTJGZE3JEP"
+        };
+
+        // --- Global Variables ---
+        let auth, db;
+        let selectedBooks = new Set();
+
+        // --- DOM Elements ---
+        const signupContainer = document.getElementById('signup-container');
+        const mainContainer = document.getElementById('main-container');
+        const signupForm = document.getElementById('signup-form');
+        const messageModal = document.getElementById('message-modal');
+        const messageModalText = document.getElementById('message-modal-text');
+        const messageModalTitle = document.getElementById('message-modal-title');
+        const selectedCountDisplay = document.getElementById('selected-count');
+
+        // --- Firebase Initialization ---
+        function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    console.log('Auth state changed:', user);
+                    if (user) {
+                        signupContainer.classList.add('hidden');
+                        mainContainer.classList.remove('hidden');
+                    } else {
+                        signupContainer.classList.remove('hidden');
+                        mainContainer.classList.add('hidden');
+                    }
+                });
+            } catch (error) {
+                showMessage('Error', `Failed to initialize the application: ${error.message}`);
+            }
+        }
+
+        // --- UI/Modal Functions ---
+        function showMessage(title, text) {
+            messageModalTitle.textContent = title;
+            messageModalText.textContent = text;
+            messageModal.classList.remove('hidden');
+            setTimeout(() => {
+                messageModal.classList.add('hidden');
+            }, 3000);
+        }
+
+        // --- Update Selected Count Display ---
+        function updateSelectedCount() {
+            selectedCountDisplay.textContent = selectedBooks.size;
+        }
+
+        // --- Book Selection Logic ---
+        function initializeBookButtons() {
+            const books = [];
+            for (let i = 65; i <= 90; i++) {
+                books.push(String.fromCharCode(i));
+            }
+
+            const bookGrid = document.getElementById('book-grid');
+            bookGrid.innerHTML = ''; // Clear existing buttons
+            
+            books.forEach(book => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'book-btn';
+                btn.textContent = book;
+                btn.setAttribute('data-book', book);
+                
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (selectedBooks.has(book)) {
+                        selectedBooks.delete(book);
+                        btn.classList.remove('selected');
+                    } else {
+                        selectedBooks.add(book);
+                        btn.classList.add('selected');
+                    }
+                    updateSelectedCount();
+                    console.log('Selected books:', Array.from(selectedBooks));
+                });
+                
+                bookGrid.appendChild(btn);
+            });
+            updateSelectedCount();
+        }
+
+        // --- Signup Form Logic ---
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate inputs
+            const name = signupForm['signup-name'].value.trim();
+            const email = signupForm['signup-email'].value.trim();
+            const password = signupForm['signup-password'].value;
+            const confirmPassword = signupForm['signup-confirm-password'].value;
+
+            if (!name) {
+                showMessage('Error', 'Please enter your name.');
+                return;
+            }
+
+            if (!email) {
+                showMessage('Error', 'Please enter your email.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('Error', 'Password must be at least 6 characters.');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('Error', 'Passwords do not match.');
+                return;
+            }
+
+            if (selectedBooks.size === 0) {
+                showMessage('Error', 'Please select at least one book/alphabet.');
+                return;
+            }
+
+            try {
+                const submitBtn = signupForm.querySelector('button');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creating Account...';
+
+                // Create user with email and password
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const userId = userCredential.user.uid;
+
+                // Convert Set to Array and sort for consistency
+                const booksArray = Array.from(selectedBooks).sort();
+
+                console.log('Creating user document with data:', {
+                    name,
+                    email,
+                    books: booksArray,
+                    createdAt: new Date().toISOString()
+                });
+
+                // Store user data in Firestore
+                const userDocRef = doc(db, "users", userId);
+                await setDoc(userDocRef, {
+                    name,
+                    email,
+                    books: booksArray,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+
+                console.log('User document created successfully');
+
+                showMessage('Success', `Account created successfully!\n\nSelected Books: ${booksArray.join(', ')}\n\nWelcome, ${name}!`);
+                
+                signupForm.reset();
+                selectedBooks.clear();
+                document.querySelectorAll('.book-btn').forEach(btn => btn.classList.remove('selected'));
+                updateSelectedCount();
+
+                // Redirect to servicelist.html after delay
+                setTimeout(() => {
+                    window.location.href = 'servicelist.html';
+                }, 2500);
+            } catch (error) {
+                console.error('Sign up error:', error);
+                showMessage('Error', `Sign up failed: ${error.message}`);
+            } finally {
+                const submitBtn = signupForm.querySelector('button');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign Up';
+            }
+        });
+
+        // --- Modal Close Events ---
+        document.getElementById('message-modal-close').addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+        document.getElementById('message-modal').addEventListener('click', function(e) {
+            if (e.target === messageModal) {
+                messageModal.classList.add('hidden');
+            }
+        });
+
+        // --- Back to Login Link ---
+        document.getElementById('back-to-login').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'login.html';
+        });
+
+        // Initialize Firebase and book buttons on page load
+        window.onload = () => {
+            initializeFirebase();
+            initializeBookButtons();
+        };
+    </script>
+
+    <!-- --- Signup Container --- -->
+    <div id="signup-container" class="w-full max-w-2xl mx-auto p-4">
+        <div class="bg-white rounded-lg shadow-2xl p-8">
+            <h1 class="text-3xl font-bold text-blue-600 mb-2 text-center">PROSPEROUS CO-OPERATIVE</h1>
+            <h2 class="text-xl font-semibold text-gray-800 mb-6 text-center">Create Your Account</h2>
+
+            <form id="signup-form" class="grid grid-cols-1 gap-4">
+                <!-- Name Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="signup-name" 
+                        placeholder="Enter your full name" 
+                        required 
+                        class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                    />
+                </div>
+
+                <!-- Email Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="signup-email" 
+                        placeholder="Enter your email" 
+                        required 
+                        class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                    />
+                </div>
+
+                <!-- Password Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                    <input 
+                        type="password" 
+                        id="signup-password" 
+                        placeholder="Enter password (min 6 characters)" 
+                        required 
+                        class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                    />
+                </div>
+
+                <!-- Confirm Password Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="signup-confirm-password" 
+                        placeholder="Confirm your password" 
+                        required 
+                        class="w-full border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" 
+                    />
+                </div>
+
+                <!-- Book/Alphabet Selection -->
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="text-sm font-semibold text-gray-700">Select Books/Alphabets (A-Z)</label>
+                        <span class="text-sm font-semibold text-blue-600">Selected: <span id="selected-count">0</span></span>
+                    </div>
+                    <div id="book-grid" class="book-grid border border-gray-300 p-4 rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+                        <!-- Books will be generated here -->
+                    </div>
+                    <p class="text-xs text-gray-600 mt-3">💡 Click on any letter to select or deselect it. You can select multiple alphabets. These will be saved to your account.</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button 
+                    type="submit" 
+                    class="w-full bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-300 mt-4"
+                >
+                    Sign Up
+                </button>
+
+                <!-- Back to Login Link -->
+                <p class="text-center text-sm text-gray-600 mt-4">
+                    Already have an account? 
+                    <a href="login.html" id="back-to-login" class="text-blue-600 font-semibold hover:underline">Log In</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- --- Main Container (Shown after signup) --- -->
+    <div id="main-container" class="container mx-auto flex flex-col items-center justify-center min-h-screen hidden">
+        <div class="mb-10">
+            <h1 class="text-4xl font-extrabold text-blue-700 text-center drop-shadow-lg tracking-wide mb-2">PROSPEROUS CO-OPERATIVE</h1>
+            <div class="w-24 h-1 bg-blue-400 rounded mx-auto"></div>
+        </div>
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-gray-800">Welcome!</h2>
+            <p class="text-gray-600 mt-2">Your account has been created successfully.</p>
+        </div>
+        <div class="flex justify-center">
+            <a href="servicelist.html" class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition duration-300">
+                Go to Services
+            </a>
+        </div>
+    </div>
+
+    <!-- --- Custom Modal for Messages --- -->
+    <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
+                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="message-modal-text" class="text-gray-700 whitespace-pre-line"></p>
+        </div>
+    </div>
+</body>
+</html>

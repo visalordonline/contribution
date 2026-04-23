@@ -3,19 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROSPEROUS CO-OPERATIVE</title>
+    <title>PROSPEROUS CO-OPERATIVE - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .login-container {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .input-field {
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .signup-link {
+            color: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .signup-link:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .loader {
+            border: 4px solid rgba(102, 126, 234, 0.2);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-blue-200 min-h-screen flex items-center justify-center">
+<body>
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
             authDomain: "contribution-c5309.firebaseapp.com",
@@ -25,49 +98,57 @@
             measurementId: "G-DTJGZE3JEP"
         };
 
-        // --- Global Variables ---
-        let auth;
+        let auth, db;
+        let isCheckingAuth = true;
 
-        // --- DOM Elements ---
-        const loginContainer = document.getElementById('login-container');
-        const mainContainer = document.getElementById('main-container');
         const loginForm = document.getElementById('login-form');
-        const forgotPasswordForm = document.getElementById('forgot-password-form');
-        const logoutBtn = document.getElementById('logout-btn');
         const messageModal = document.getElementById('message-modal');
         const messageModalText = document.getElementById('message-modal-text');
         const messageModalTitle = document.getElementById('message-modal-title');
+        const loginContainer = document.getElementById('login-container');
+        const loadingContainer = document.getElementById('loading-container');
 
-        // --- Firebase Initialization ---
         function initializeFirebase() {
             try {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
+                db = getFirestore(app);
 
-                onAuthStateChanged(auth, (user) => {
-                    console.log('Auth state changed:', user);
+                // Check if user is already logged in
+                onAuthStateChanged(auth, async (user) => {
                     if (user) {
-                        loginContainer.classList.add('hidden');
-                        mainContainer.classList.remove('hidden');
+                        // User is logged in, redirect to dashboard
+                        console.log('User already logged in:', user.email);
+                        try {
+                            // Verify user data exists in Firestore
+                            const userDocRef = doc(db, "users", user.uid);
+                            const userDocSnap = await getDoc(userDocRef);
+                            
+                            if (userDocSnap.exists()) {
+                                console.log('User data found:', userDocSnap.data());
+                                // Redirect to dashboard
+                                window.location.href = 'index.html';
+                            } else {
+                                console.log('User data not found in Firestore');
+                                showMessage('Warning', 'User data incomplete. Please sign up again.');
+                            }
+                        } catch (error) {
+                            console.error('Error checking user data:', error);
+                        }
                     } else {
+                        // User is not logged in
                         loginContainer.classList.remove('hidden');
-                        mainContainer.classList.add('hidden');
-                        sessionStorage.removeItem('user');
+                        loadingContainer.classList.add('hidden');
+                        isCheckingAuth = false;
                     }
                 });
             } catch (error) {
-                showMessage('Error', `Failed to initialize the application: ${error.message}`);
+                showMessage('Error', `Failed to initialize: ${error.message}`);
+                loadingContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+                isCheckingAuth = false;
             }
         }
-
-        // --- UI/Modal Functions ---
-        function showAuthForm(formId) {
-            document.getElementById('login-form-div').classList.add('hidden');
-            document.getElementById('forgot-password-form-div').classList.add('hidden');
-            document.getElementById(formId).classList.remove('hidden');
-        }
-
-        document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
 
         function showMessage(title, text) {
             messageModalTitle.textContent = title;
@@ -75,153 +156,244 @@
             messageModal.classList.remove('hidden');
             setTimeout(() => {
                 messageModal.classList.add('hidden');
-            }, 3000);
+            }, 4000);
         }
 
-        // --- Authentication Form Logic ---
+        // Login Form Submission
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = loginForm['login-email'].value;
+
+            const email = loginForm['login-email'].value.trim();
             const password = loginForm['login-password'].value;
+            const submitBtn = loginForm.querySelector('button');
+
+            // Validation
+            if (!email) {
+                showMessage('Error', 'Please enter your email.');
+                return;
+            }
+
+            if (!password) {
+                showMessage('Error', 'Please enter your password.');
+                return;
+            }
+
             try {
-                loginForm.querySelector('button').disabled = true;
-                loginForm.querySelector('button').textContent = 'Logging in...';
-                await signInWithEmailAndPassword(auth, email, password);
-                showMessage('Success', 'Logged in successfully!');
-                loginContainer.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="inline-block mr-2">Logging in</span><i class="fas fa-spinner fa-spin"></i>';
+
+                // Sign in with email and password
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                console.log('User signed in:', user.email);
+
+                // Get user data from Firestore
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    console.log('User data retrieved:', userData);
+
+                    // Store user data in session storage for quick access
+                    sessionStorage.setItem('user', JSON.stringify({
+                        uid: user.uid,
+                        email: user.email,
+                        name: userData.name,
+                        books: userData.books
+                    }));
+
+                    showMessage('Success', `Welcome back, ${userData.name}!`);
+
+                    // Redirect to dashboard after short delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1500);
+                } else {
+                    console.error('User document not found');
+                    showMessage('Error', 'User data not found. Please contact support.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Log In';
+                }
             } catch (error) {
-                showMessage('Error', `Login failed: ${error.message}`);
-            } finally {
-                loginForm.querySelector('button').disabled = false;
-                loginForm.querySelector('button').textContent = 'Login';
+                console.error('Login error:', error);
+                
+                let errorMessage = 'Login failed. Please try again.';
+                
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'Email not found. Please sign up first.';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorMessage = 'Incorrect password. Please try again.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email address.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorMessage = 'Too many login attempts. Please try again later.';
+                }
+
+                showMessage('Error', errorMessage);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Log In';
             }
         });
 
-        forgotPasswordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = forgotPasswordForm['forgot-password-email'].value;
-            try {
-                forgotPasswordForm.querySelector('button').disabled = true;
-                forgotPasswordForm.querySelector('button').textContent = 'Sending...';
-                await sendPasswordResetEmail(auth, email);
-                showMessage('Success', 'Password reset email sent. Check your inbox.');
-                document.getElementById('forgot-password-form-div').classList.add('hidden');
-                document.getElementById('login-form-div').classList.remove('hidden');
-            } catch (error) {
-                showMessage('Error', `Password reset failed: ${error.message}`);
-            } finally {
-                forgotPasswordForm.querySelector('button').disabled = false;
-                forgotPasswordForm.querySelector('button').textContent = 'Send Reset Email';
-            }
-        });
-
-        // --- Logout Logic ---
-        logoutBtn.addEventListener('click', async () => {
-            try {
-                logoutBtn.disabled = true;
-                logoutBtn.textContent = 'Logging out...';
-                await signOut(auth);
-                sessionStorage.removeItem('user');
-                showMessage('Success', 'Logged out successfully!');
-                loginContainer.classList.remove('hidden');
-                mainContainer.classList.add('hidden');
-            } catch (error) {
-                showMessage('Error', `Logout failed: ${error.message}`);
-            } finally {
-                logoutBtn.disabled = false;
-                logoutBtn.textContent = 'Logout';
-            }
-        });
-
-        // --- Modal Close Events ---
+        // Modal Close
         document.getElementById('message-modal-close').addEventListener('click', () => {
             messageModal.classList.add('hidden');
         });
+
         document.getElementById('message-modal').addEventListener('click', function(e) {
             if (e.target === messageModal) {
                 messageModal.classList.add('hidden');
             }
         });
-        document.getElementById('forgot-password-form-close').addEventListener('click', () => {
-            document.getElementById('forgot-password-form-div').classList.add('hidden');
-            document.getElementById('login-form-div').classList.remove('hidden');
+
+        // Sign Up Link
+        document.getElementById('signup-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = 'signup.html';
         });
-        document.getElementById('forgot-password-form-div').addEventListener('click', function(e) {
-            if (e.target === document.getElementById('forgot-password-form-div')) {
-                document.getElementById('forgot-password-form-div').classList.add('hidden');
-                document.getElementById('login-form-div').classList.remove('hidden');
+
+        // Password visibility toggle
+        document.getElementById('toggle-password').addEventListener('click', function() {
+            const passwordInput = document.getElementById('login-password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         });
 
-        // Initialize Firebase on page load
+        // Initialize on page load
         window.onload = initializeFirebase;
     </script>
 
-    <!-- --- Login Container --- -->
-    <div id="login-container" class="fixed inset-0 flex items-center justify-center z-50 modal-backdrop">
-        <div id="login-form-div" class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 text-center">Login to Prosperous Co-operative</h2>
-            <form id="login-form" class="grid grid-cols-1 gap-4">
-                <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
-                <p class="text-center text-sm text-gray-600">
-                    Forgot password? <a href="#" class="show-forgot-password-link text-blue-600 hover:underline">Reset Password</a>
+    <!-- Loading Container -->
+    <div id="loading-container" class="w-full h-screen flex items-center justify-center">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <p class="text-white text-lg font-semibold">Checking authentication...</p>
+        </div>
+    </div>
+
+    <!-- Login Container -->
+    <div id="login-container" class="hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md fade-in">
+            <!-- Logo Section -->
+            <div class="text-center mb-8">
+                <div class="inline-block mb-4">
+                    <i class="fas fa-handshake text-white text-5xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold text-white mb-2">PROSPEROUS CO-OPERATIVE</h1>
+                <p class="text-blue-100 text-lg">Member Portal</p>
+            </div>
+
+            <!-- Login Card -->
+            <div class="login-container rounded-2xl shadow-2xl p-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Welcome Back</h2>
+
+                <form id="login-form" class="space-y-4">
+                    <!-- Email Input -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-envelope mr-2 text-blue-600"></i>Email Address
+                        </label>
+                        <input
+                            type="email"
+                            id="login-email"
+                            placeholder="Enter your email"
+                            required
+                            class="input-field w-full border-2 border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                        />
+                    </div>
+
+                    <!-- Password Input -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2 text-blue-600"></i>Password
+                        </label>
+                        <div class="relative">
+                            <input
+                                type="password"
+                                id="login-password"
+                                placeholder="Enter your password"
+                                required
+                                class="input-field w-full border-2 border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                            />
+                            <button
+                                type="button"
+                                id="toggle-password"
+                                class="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                            >
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Remember Me & Forgot Password -->
+                    <div class="flex justify-between items-center text-sm">
+                        <label class="flex items-center text-gray-600">
+                            <input type="checkbox" class="mr-2 rounded" />
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="text-blue-600 hover:text-blue-700 font-semibold">Forgot Password?</a>
+                    </div>
+
+                    <!-- Login Button -->
+                    <button
+                        type="submit"
+                        class="btn-login w-full text-white font-bold py-3 rounded-lg transition duration-300 mt-6 flex items-center justify-center"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>Log In
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="relative my-6">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">New to Prosperous?</span>
+                    </div>
+                </div>
+
+                <!-- Sign Up Link -->
+                <p class="text-center text-gray-600 mb-4">
+                   <!-- Don't have an account?-->
+                    <a href="signup.html" id="signup-link" class="signup-link font-semibold">
+                        .
+                    </a>
                 </p>
-            </form>
-        </div>
-        <div id="forgot-password-form-div" class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800">Reset Password</h2>
-                <button id="forgot-password-form-close" class="text-gray-500 hover:text-gray-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
-                <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Send Reset Email</button>
-            </form>
-        </div>
-    </div>
 
-    <!-- --- Main Container --- -->
-    <div id="main-container" class="container mx-auto flex flex-col items-center justify-center min-h-screen hidden">
-        <div class="mb-10">
-            <h1 class="text-4xl font-extrabold text-blue-700 text-center drop-shadow-lg tracking-wide mb-2">PROSPEROUS CO-OPERATIVE</h1>
-            <div class="w-24 h-1 bg-blue-400 rounded mx-auto"></div>
-        </div>
-        <div class="flex justify-end w-full max-w-3xl mb-4">
-            <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">Logout</button>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
-            <div class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-transform duration-200">
-                <h1 class="text-xl font-bold mb-2 text-green-700">DAILY CONTRIBUTION BOOK</h1>
-                <a href="daily.html" class="text-blue-600 hover:underline font-medium mt-2">Open Book</a>
+                <!-- Support Info -->
+                <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-xs text-gray-600 text-center">
+                        <i class="fas fa-shield-alt text-blue-600 mr-1"></i>
+                        Secure login. Your data is protected.
+                    </p>
+                </div>
             </div>
-            <div class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-transform duration-200">
-                <h1 class="text-xl font-bold mb-2 text-green-700">6 MONTH CONTRIBUTION BOOK</h1>
-                <a href="6month.html" class="text-blue-600 hover:underline font-medium mt-2">Open Book</a>
-            </div>
-            <div class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-transform duration-200">
-                <h1 class="text-xl font-bold mb-2 text-green-700">JANUARY CONTRIBUTION BOOK</h1>
-                <a href="January.html" class="text-blue-600 hover:underline font-medium mt-2">Open Book</a>
-            </div>
-            <div class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 transition-transform duration-200">
-                <h1 class="text-xl font-bold mb-2 text-green-700">MINI BOOK</h1>
-                <a href="minibook.html" class="text-blue-600 hover:underline font-medium mt-2">Open Book</a>
+
+            <!-- Footer -->
+            <div class="text-center mt-6 text-blue-100 text-sm">
+                <p>&copy; 2024 Prosperous Co-operative. All rights reserved.</p>
             </div>
         </div>
     </div>
 
-    <!-- --- Custom Modal for Messages --- -->
+    <!-- Message Modal -->
     <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
                 <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
-                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>

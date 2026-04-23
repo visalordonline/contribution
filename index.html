@@ -3,63 +3,317 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prosperous Co-operative</title>
+  <title>Prosperous Co-operative - Smart Contributions & Loans</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', sans-serif; }
-    body { line-height:1.6; color:#333; }
+    :root {
+      --bg-color: #008080; /* Teak-like deep cyan from the image, but solid */
+      --hero-start-color: #004d4d; /* Darker starting shade */
+      --hero-end-color: #011212; /* Near black */
+      --accent-color: #38b2ac; /* Bright teal for the ink and buttons */
+      --text-color: #ffffff;
+      --font-body: 'Inter', sans-serif;
+    }
 
+    * { margin:0; padding:0; box-sizing:border-box; font-family: var(--font-body); }
+    body { line-height:1.6; color:#333; background: var(--bg-color); }
+
+    /* Updated Header to match the image's top nav feel, but kept the text from the prompt */
     header {
       display:flex;
       justify-content:space-between;
       align-items:center;
-      padding:20px;
-      background:#0a2c4a;
+      padding:20px 60px; /* Wider padding like the image */
+      background: rgba(10, 44, 74, 0.95); /* Keep original color but with alpha for a modern feel */
       color:#fff;
       flex-wrap:wrap;
+      position: absolute; /* Place over the hero */
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 100;
+    }
+
+    .brand-container {
+      display: flex;
+      align-items: center;
+    }
+
+    header h2 {
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: -0.5px;
     }
 
     nav {
       display:flex;
       flex-wrap:wrap;
       justify-content:center;
-      margin-top:10px;
+      margin-top:0; /* reset */
     }
 
     nav a {
-      margin:10px;
+      margin:0 15px;
       color:#fff;
       text-decoration:none;
       font-weight:500;
+      opacity: 0.8;
+      transition: opacity 0.3s;
     }
 
-    nav a:hover { color:#00c896; }
+    nav a:hover, nav a.active { opacity:1; }
 
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .btn-sign-up {
+      padding: 10px 20px;
+      border: 1px solid #fff;
+      border-radius: 5px;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.3s;
+    }
+    .btn-sign-up:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* --- THE REIMAGINED HERO SECTION --- */
     .hero {
-      height:90vh;
-      background:url('https://images.unsplash.com/photo-1601597111158-2fceff292cdc') center/cover no-repeat;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      text-align:center;
-      padding:20px;
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      background: linear-gradient(to bottom, var(--hero-start-color), var(--hero-end-color));
+      overflow: hidden;
+      color: var(--text-color);
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* Split for text and ink */
+      align-items: center;
+      padding: 0 10vw; /* Wide margins */
+      padding-top: 100px; /* Space for the absolute header */
     }
 
-    .hero h1 {
-      font-size:2.5rem;
-      background:rgba(0,0,0,0.6);
-      padding:20px;
-      border-radius:10px;
+    /* Fake background texture element (darker blue texture from image) */
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(var(--bg-color) 0.5px, transparent 0.5px),
+        radial-gradient(var(--bg-color) 0.5px, transparent 0.5px);
+      background-size: 40px 40px;
+      background-position: 0 0, 20px 20px;
+      opacity: 0.1; /* Very subtle texture */
+      pointer-events: none;
     }
 
-    section { padding:40px 20px; }
+    /* The central ink cloud effect - using a placeholder image for texture */
+    .hero-ink {
+      position: absolute;
+      top: 50%;
+      left: 60%;
+      transform: translate(-50%, -50%) scale(1);
+      width: 60vh;
+      height: 60vh;
+      background-image: url('https://images.unsplash.com/photo-1543857778-c4a1a3e0b2eb?q=80&w=600'); /* Use a vibrant cloud/ink texture as a base */
+      background-size: cover;
+      background-position: center;
+      border-radius: 50%; /* Make it rougher with a mask if possible, or just accept the shape */
+      filter: drop-shadow(0 0 40px var(--accent-color));
+      opacity: 0.8;
+      z-index: 1;
+      /* Add some 'floating particle' effects around the cloud */
+      mask-image: radial-gradient(circle, #fff 40%, rgba(255,255,255,0) 80%);
+      -webkit-mask-image: radial-gradient(circle, #fff 40%, rgba(255,255,255,0) 80%);
+    }
+
+    /* Small particles scattered around the ink cloud */
+    .particles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .particle {
+      position: absolute;
+      background-color: var(--accent-color);
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+    .p1 { width: 4px; height: 4px; top: 30%; left: 55%; }
+    .p2 { width: 6px; height: 6px; top: 45%; left: 65%; }
+    .p3 { width: 3px; height: 3px; top: 60%; left: 58%; }
+    .p4 { width: 5px; height: 5px; top: 70%; left: 63%; }
+
+    /* Right-side element to balance, like the video clip from image, but with a logo feel */
+    .hero-loan-info {
+      position: absolute;
+      top: 50%;
+      right: 10vw;
+      transform: translateY(-50%);
+      width: 300px;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.05); /* very light, like the image clip bg */
+      border-radius: 8px;
+      backdrop-filter: blur(5px);
+      z-index: 5;
+    }
+    .loan-type { margin-bottom: 10px; font-weight: 500; color: rgba(255,255,255,0.7); }
+    .loan-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 15px; color: var(--accent-color); }
+    .loan-desc { font-size: 0.9rem; margin-bottom: 20px; color: rgba(255,255,255,0.8); }
+    .btn-loan-more {
+      padding: 8px 16px;
+      background-color: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    /* Main Hero Text (Left Aligned) */
+    .hero-text-container {
+      padding-right: 5vw;
+      max-width: 600px;
+      justify-self: start;
+      align-self: center;
+      text-align: left;
+      z-index: 10;
+    }
+
+    .hero-pretitle {
+      font-size: 0.9rem;
+      font-weight: 300;
+      margin-bottom: 10px;
+      opacity: 0.7;
+    }
+
+    .hero-title {
+      font-size: 3.5rem;
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      letter-spacing: -1.5px;
+      /* removed black background for a cleaner look that allows ink interaction */
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+      max-width: 500px;
+      opacity: 0.8;
+      margin-bottom: 30px;
+    }
+
+    .btn-hero {
+      display: inline-block;
+      padding: 12px 25px;
+      background-color: #fff;
+      color: var(--hero-start-color);
+      text-decoration: none;
+      font-weight: 600;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+    .btn-hero:hover {
+      background-color: var(--accent-color);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    /* Side Navigation Dots from image (left side) */
+    .side-dots {
+      position: absolute;
+      top: 50%;
+      left: 30px;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+    .side-dots .dot {
+      width: 8px;
+      height: 8px;
+      background-color: rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .side-dots .dot.active {
+      background-color: #fff;
+    }
+    .side-dots .scroll-indicator {
+      margin-top: 15px;
+      color: rgba(255,255,255,0.4);
+      transform: rotate(90deg);
+      font-size: 0.8rem;
+    }
+
+    /* Right-side social/explore icons from image */
+    .side-icons {
+      position: absolute;
+      bottom: 60px;
+      right: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      z-index: 10;
+      color: rgba(255,255,255,0.5);
+    }
+    .side-icons span {
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .side-icons span:hover { color: #fff; }
+    .side-icons .vertical-text {
+      writing-mode: vertical-rl;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      margin-top: 10px;
+      opacity: 0.5;
+    }
+
+    /* Footer data points from image, repurposed for loan details */
+    .footer-loan-stats {
+      position: absolute;
+      bottom: 20px;
+      left: 10vw;
+      display: flex;
+      gap: 50px;
+      z-index: 5;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.8rem;
+    }
+    .footer-loan-stats > div {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .footer-loan-stats .stat-label { text-transform: uppercase; font-weight: 300; }
+    .footer-loan-stats .stat-value { font-weight: 700; color: #fff; font-size: 1.1rem;}
+
+    /* Rest of the original sections, just updated color schemes */
+    section { padding:80px 20px; background: #fff;}
 
     .about, .why, .testimony {
       max-width:1000px;
       margin:auto;
       text-align:center;
     }
+
+    h2 { font-size: 2rem; margin-bottom: 20px; color: #0a2c4a; }
 
     .why-grid {
       display:grid;
@@ -69,63 +323,51 @@
     }
 
     .card {
-      padding:20px;
+      padding:30px;
       border-radius:10px;
-      background:#f4f4f4;
-      box-shadow:0 4px 10px rgba(0,0,0,0.1);
+      background:#fcfcfc;
+      border: 1px solid #eee;
+      box-shadow:0 2px 10px rgba(0,0,0,0.05);
+      transition: transform 0.3s;
     }
+    .card:hover { transform: translateY(-5px); }
+    .card h3 { color: var(--accent-color); margin-bottom: 10px; }
 
     .testimony blockquote {
       margin:20px 0;
       font-style:italic;
+      padding: 20px;
+      background: #f9f9f9;
+      border-left: 4px solid var(--accent-color);
     }
 
     footer {
       background:#0a2c4a;
       color:#fff;
       text-align:center;
-      padding:20px;
-    }
-
-    .btn {
-      display:inline-block;
-      margin-top:20px;
-      padding:10px 20px;
-      background:#00c896;
-      color:#fff;
-      text-decoration:none;
-      border-radius:5px;
+      padding:40px 20px;
     }
 
     /* RESPONSIVE DESIGN */
+    @media (max-width: 900px) {
+        .hero { grid-template-columns: 1fr; text-align: center; }
+        .hero-text-container { margin: auto; padding-right: 0; }
+        .hero-ink { display: none; } /* Hide the complex ink effect on smaller screens for performance */
+        .hero-loan-info { display: none; }
+        .footer-loan-stats { display: none; }
+    }
+
     @media (max-width: 768px) {
-      .hero h1 {
-        font-size:1.8rem;
-      }
-
-      header {
-        flex-direction:column;
-        text-align:center;
-      }
-
-      nav {
-        flex-direction:column;
-      }
-
-      nav a {
-        margin:8px 0;
-      }
+      header { padding: 20px; justify-content: center; position: static;}
+      .header-right { margin-top: 10px; width: 100%; justify-content: center; }
+      nav { margin-top: 10px; width: 100%; justify-content: center;}
+      .hero-title { font-size:2.5rem; }
+      .side-dots, .side-icons { display: none; }
     }
 
     @media (max-width: 480px) {
-      .hero h1 {
-        font-size:1.5rem;
-        padding:15px;
-      }
-
-      section {
-        padding:30px 15px;
-      }
+      .hero-title { font-size:2rem; }
+      .btn-hero { padding: 10px 20px; }
     }
 
   </style>
@@ -133,55 +375,97 @@
 <body>
 
 <header>
-  <h2>PROSPEROUS CO-OPERATIVE</h2>
+  <div class="brand-container">
+    <h2>PROSPEROUS CO-OPERATIVE</h2>
+  </div>
   <nav>
-    <a href="#">Home</a>
+    <a href="#" class="active">Home</a>
     <a href="#about">About</a>
     <a href="#contact">Contact</a>
-    <a href="login.html">Login as Staff</a>
   </nav>
+  <div class="header-right">
+    <a  style="text-decoration: none; color: white;" href="login.html" class="nav-a">Login as Staff</a>
+  </div>
 </header>
 
 <section class="hero">
-  <div>
-    <h1>Building Wealth Together Through Smart Contributions</h1>
-    <a href="#about" class="btn">Learn More</a>
+  <div class="side-dots">
+    <span class="dot active"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="scroll-indicator">scroll</span>
+  </div>
+
+  <div class="hero-text-container">
+    <p class="hero-pretitle"> <span style="font-size: 30px; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: yellow;">Prosperous Co-operative</span> <br>A trusted community of financial growth</p>
+    <h1 class="hero-title">Building Wealth Together</h1>
+    <p class="hero-subtitle">
+      Secure savings and tailored financing solutions for a prosperous future.
+    </p>
+    <a href="#about" class="btn-hero">Learn More</a>
+  </div>
+
+  <div class="hero-ink"></div>
+  <div class="particles">
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+  </div>
+
+  <div class="hero-loan-info">
+    <p class="loan-type">Product Highlight</p>
+    <h3 class="loan-title">Flexible January Loans</h3>
+    <p class="loan-desc">Get the boost you need after the holidays. Simple terms for your next big goal.</p>
+    <a href="#" class="btn-loan-more">Apply Now</a>
+  </div>
+
+  <div class="footer-loan-stats">
+    <div><span class="stat-label">Contributions Active</span><span class="stat-value">100k+</span></div>
+    <div><span class="stat-label">Members Growing</span><span class="stat-value">3k+</span></div>
+    <div><span class="stat-label">Total Wealth</span><span class="stat-value">$1M+</span></div>
+  </div>
+
+  <div class="side-icons">
+    <span class="icon">&#128269;</span>
+    <span class="icon">&#10148;</span>
+    <p class="vertical-text">explore</p>
   </div>
 </section>
 
 <section id="about" class="about">
-  <h2>About Us</h2>
+  <h2>About Our Co-operative</h2>
   <p>
-    Prosperous Co-operative is a trusted financial community focused on helping members grow their savings through structured contributions. We promote financial discipline, transparency, and collective growth.
+    Prosperous Co-operative is a trusted financial community. We empower members to build wealth through structured contributions and accessible financing options. We promote financial discipline, transparency, and collective growth.
   </p>
 </section>
 
 <section class="why">
-  <h2>Why Choose Us</h2>
+  <h2>Tailored Financial Solutions</h2>
   <div class="why-grid">
     <div class="card">
-      <h3>Secure Savings</h3>
-      <p>Your contributions are safe and well-managed.</p>
+      <h3>Structured Contributions</h3>
+      <p>Flexible savings plans (Daily, Monthly) designed for consistency.</p>
     </div>
     <div class="card">
-      <h3>Trusted Community</h3>
-      <p>We are built on trust, accountability, and transparency.</p>
+      <h3>January Loans</h3>
+      <p>Special funding to kickstart your year with easy repayment terms.</p>
     </div>
     <div class="card">
-      <h3>Financial Growth</h3>
-      <p>Helping members achieve financial stability and success.</p>
+      <h3>6 Month Mini Loans</h3>
+      <p>Quick access to funds for short-term needs and small projects.</p>
     </div>
   </div>
 </section>
 
 <section class="testimony">
-  <h2>Testimonials</h2>
-  <blockquote>"Joining Prosperous Co-operative changed my financial life!"</blockquote>
-  <blockquote>"A reliable platform to grow savings with peace of mind."</blockquote>
+  <h2>Member Testimonials</h2>
+  <blockquote>"The structured contributions helped me save consistently for the first time!"</blockquote>
+  <blockquote>"Prosperous Co-operative provided a trusted platform to grow our family's savings."</blockquote>
 </section>
 
 <footer id="contact">
-  <p>Contact us: info@prosperouscooperative.com</p>
+  <p>Contact us: support@prosperouscooperative.com</p>
   <p>&copy; 2026 Prosperous Co-operative. All rights reserved.</p>
 </footer>
 

@@ -5,21 +5,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin || January Contribution</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
         input[type="checkbox"]:checked { accent-color: green; }
         input[type="checkbox"] { accent-color: green; }
-        .book-tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; }
-        .book-tab.active { border-bottom-color: #3b82f6; color: #3b82f6; }
-        .book-tab:hover { background-color: #f3f4f6; }
+        .avatar-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-bottom: 3px solid #667eea;
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logo-icon {
+            font-size: 32px;
+        }
+        .logo-text h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .logo-text p {
+            margin: 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-info h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .user-info p {
+            margin: 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
     </style>
 </head>
-<body class="p-6 bg-gray-50 font-sans min-h-screen flex items-center justify-center">
+<body class="bg-gray-50 font-sans min-h-screen">
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, getDoc, doc, setDoc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, getDoc, doc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase config
         const firebaseConfig = {
@@ -36,10 +94,11 @@
         let app, auth, db;
         let userId = null;
         let userName = "";
+        let userEmail = "";
         let allContributors = [];
         let filteredContributors = [];
         let maxDayColumns = 0;
-        let selectedBook = "Book A";
+        let selectedBook = "A";
         let selectedMonth = "";
         window.firestoreUnsubscribers = [];
         window.setupListenersInitialized = false;
@@ -47,7 +106,9 @@
         // --- DOM Elements ---
         const loginContainer = document.getElementById('login-container');
         const dashboardContainer = document.getElementById('dashboard-container');
-        const dashboardName = document.getElementById('dashboard-name');
+        const userNameDisplay = document.getElementById('user-name-display');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userAvatarDisplay = document.getElementById('user-avatar-display');
         const activityLog = document.getElementById('activity-log');
         const contributorTableBody = document.getElementById('contributor-table');
         const tableContainer = document.getElementById('table-container');
@@ -55,9 +116,6 @@
         const messageModal = document.getElementById('message-modal');
         const messageModalText = document.getElementById('message-modal-text');
         const messageModalTitle = document.getElementById('message-modal-title');
-        const loginForm = document.getElementById('login-form');
-        const registerForm = document.getElementById('register-form');
-        const forgotPasswordForm = document.getElementById('forgot-password-form');
         const customInputModal = document.getElementById('custom-input-modal');
         const customInputModalTitle = document.getElementById('custom-input-modal-title');
         const customInputModalInput = document.getElementById('custom-input-modal-input');
@@ -75,25 +133,39 @@
         const editForm = document.getElementById('edit-form');
         const searchInput = document.getElementById('search-input');
         const searchMonth = document.getElementById('search-month');
+        const bookSelector = document.getElementById('book-selector');
         const dailyIconsModal = document.getElementById('daily-icons-modal');
         const dailyIconsModalText = document.getElementById('daily-icons-modal-text');
         const expensesModal = document.getElementById('expenses-modal');
         const expensesModalText = document.getElementById('expenses-modal-text');
+        const dateFilterModal = document.getElementById('date-filter-modal');
+        const dateFilterModalTitle = document.getElementById('date-filter-modal-title');
+        const dateFilterStartDate = document.getElementById('date-filter-start-date');
+        const dateFilterEndDate = document.getElementById('date-filter-end-date');
+        const dateFilterBtn = document.getElementById('date-filter-btn');
 
-        // --- Helper function to format date ---
+        // --- Helper Functions ---
         function formatDate(dateStr) {
             if (!dateStr) return 'N/A';
             return new Date(dateStr).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
         }
 
-        // --- Helper function to format date for input ---
         function formatDateForInput(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr);
             return date.toISOString().split('T')[0];
         }
 
-        // --- Firebase Initialization and Authentication ---
+        function getUserInitials(name, email) {
+            if (name) {
+                return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            } else if (email) {
+                return email[0].toUpperCase();
+            }
+            return '?';
+        }
+
+        // --- Firebase Initialization ---
         async function initializeFirebase() {
             try {
                 app = initializeApp(firebaseConfig);
@@ -103,22 +175,37 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
+                        userEmail = user.email || "";
                         const userDocRef = doc(db, "users", userId);
                         const userDocSnap = await getDoc(userDocRef);
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
                         const isAdmin = userDocSnap.exists() && userDocSnap.data().role === "admin";
-                        dashboardName.textContent = userName ? `Welcome, ${userName} (${isAdmin ? 'Admin' : 'User'})` : "Welcome";
+                        
+                        if (!isAdmin) {
+                            showMessage('Access Denied', 'This page is only for administrators.');
+                            setTimeout(() => {
+                                window.location.href = 'login.html';
+                            }, 2000);
+                            return;
+                        }
+                        
+                        const initials = getUserInitials(userName, userEmail);
+                        userNameDisplay.textContent = userName || 'Admin';
+                        userEmailDisplay.textContent = userEmail;
+                        userAvatarDisplay.textContent = initials;
+                        
                         loginContainer.classList.add('hidden');
                         dashboardContainer.classList.remove('hidden');
                         setupFirestoreListener(isAdmin);
                     } else {
                         userId = null;
                         userName = "";
-                        dashboardName.textContent = "";
+                        userEmail = "";
                         loginContainer.classList.remove('hidden');
                         dashboardContainer.classList.add('hidden');
                         activityLog.innerHTML = '';
                         contributorTableBody.innerHTML = '';
+                        window.location.href = 'admin-login.html';
                     }
                 });
             } catch (error) {
@@ -136,263 +223,116 @@
             }, 3000);
         }
 
-        // --- Show Authentication Form ---
-        function showAuthForm(formId) {
-            document.getElementById('login-form-div').classList.add('hidden');
-            document.getElementById('register-form-div').classList.add('hidden');
-            document.getElementById('forgot-password-form-div').classList.add('hidden');
-            document.getElementById(formId).classList.remove('hidden');
-        }
-
-        document.querySelectorAll('.show-login-link').forEach(link => link.addEventListener('click', () => showAuthForm('login-form-div')));
-        document.querySelectorAll('.show-register-link').forEach(link => link.addEventListener('click', () => showAuthForm('register-form-div')));
-        document.querySelectorAll('.show-forgot-password-link').forEach(link => link.addEventListener('click', () => showAuthForm('forgot-password-form-div')));
-
-        // --- Authentication Form Logic ---
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = loginForm['login-email'].value;
-            const password = loginForm['login-password'].value;
-            try {
-                loginForm.querySelector('button').disabled = true;
-                loginForm.querySelector('button').textContent = 'Logging in...';
-                await signInWithEmailAndPassword(auth, email, password);
-                showMessage('Success', 'Logged in successfully!');
-                loginContainer.classList.add('hidden');
-                dashboardContainer.classList.remove('hidden');
-            } catch (error) {
-                showMessage('Error', `Login failed: ${error.message}`);
-            } finally {
-                loginForm.querySelector('button').disabled = false;
-                loginForm.querySelector('button').textContent = 'Login';
-            }
-        });
-
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = registerForm['register-name'].value;
-            const email = registerForm['register-email'].value;
-            const password = registerForm['register-password'].value;
-            try {
-                registerForm.querySelector('button').disabled = true;
-                registerForm.querySelector('button').textContent = 'Registering...';
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                userId = user.uid;
-                await setDoc(doc(db, "users", user.uid), { name: name, email: email, role: "user" });
-                showMessage('Success', 'Account created successfully! You are now logged in.');
-                loginContainer.classList.add('hidden');
-                dashboardContainer.classList.remove('hidden');
-            } catch (error) {
-                showMessage('Error', `Registration failed: ${error.message}`);
-            } finally {
-                registerForm.querySelector('button').disabled = false;
-                registerForm.querySelector('button').textContent = 'Register';
-            }
-        });
-
-        forgotPasswordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = forgotPasswordForm['forgot-password-email'].value;
-            try {
-                forgotPasswordForm.querySelector('button').disabled = true;
-                forgotPasswordForm.querySelector('button').textContent = 'Sending...';
-                await sendPasswordResetEmail(auth, email);
-                showMessage('Success', 'Password reset email sent. Check your inbox.');
-            } catch (error) {
-                showMessage('Error', `Password reset failed: ${error.message}`);
-            } finally {
-                forgotPasswordForm.querySelector('button').disabled = false;
-                forgotPasswordForm.querySelector('button').textContent = 'Send Reset Email';
-            }
-        });
-
-        // --- Modal Functions ---
-        function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
-            customInputModalTitle.textContent = title;
-            customInputModalInput.placeholder = placeholder;
-            customInputModalInput.value = defaultAmount;
-            customInputModalDate.value = defaultDate || formatDateForInput(new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }));
-            customInputModalReason.value = '';
-            customInputModalBtn.textContent = buttonText;
-            customInputModal.classList.remove('hidden');
-            const submitHandler = () => {
-                const amount = parseFloat(customInputModalInput.value);
-                const selectedDate = customInputModalDate.value;
-                const reason = customInputModalReason.value.trim() || 'No reason provided';
-                if (isNaN(amount) || amount <= 0) {
-                    showMessage('Error', 'Please enter a valid positive number.');
-                    return;
-                }
-                if (!selectedDate) {
-                    showMessage('Error', 'Please select a valid date.');
-                    return;
-                }
-                callback(amount, selectedDate, reason);
-                customInputModal.classList.add('hidden');
-                customInputModalBtn.removeEventListener('click', submitHandler);
-            };
-            customInputModalBtn.addEventListener('click', submitHandler);
-        }
-
-        function showHistoryModal(history) {
-            historyModalText.innerHTML = history.length > 0
-                ? history.map(h => `
-                    <div class="border-b py-2">
-                        <p><strong>Date:</strong> ${h.date}</p>
-                        <p><strong>Old Amount:</strong> ₦${h.oldAmount.toFixed(2)}</p>
-                        <p><strong>New Amount:</strong> ₦${h.newAmount.toFixed(2)}</p>
-                        <p><strong>Reason:</strong> ${h.reason}</p>
-                    </div>
-                `).join('')
-                : '<p>No correction history available.</p>';
-            historyModal.classList.remove('hidden');
-        }
-
-        function showConfirmationModal(title, text, onConfirm) {
-            confirmationModalTitle.textContent = title;
-            confirmationModalText.textContent = text;
-            confirmationModal.classList.remove('hidden');
-            const handleYes = () => {
-                onConfirm();
-                confirmationModal.classList.add('hidden');
-                confirmationModalYesBtn.removeEventListener('click', handleYes);
-                confirmationModalNoBtn.removeEventListener('click', handleNo);
-            };
-            const handleNo = () => {
-                confirmationModal.classList.add('hidden');
-                confirmationModalYesBtn.removeEventListener('click', handleYes);
-                confirmationModalNoBtn.removeEventListener('click', handleNo);
-            };
-            confirmationModalYesBtn.addEventListener('click', handleYes);
-            confirmationModalNoBtn.addEventListener('click', handleNo);
-        }
-
         // --- Firestore Data Handling ---
-async function setupFirestoreListener(isAdmin) {
-    if (!userId) return;
-    
-    // Clean up existing listeners FIRST
-    if (window.firestoreUnsubscribers && window.firestoreUnsubscribers.length > 0) {
-        window.firestoreUnsubscribers.forEach(unsub => unsub());
-        window.firestoreUnsubscribers = [];
-    }
-    
-    allContributors = [];
-    window.setupListenersInitialized = true;
-
-    try {
-        const usersSnap = await getDocs(collection(db, "users"));
-        
-        // Helper to normalize contributor data
-        const normalizeContributor = (docSnap, uid, displayName, userBook) => {
-            let data = docSnap.data() || {};
-            if (!Array.isArray(data.tickDates)) data.tickDates = [];
-            if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
-            if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
-            if (typeof data.totalContributions !== 'number') {
-                data.totalContributions = data.deposit || 0;
+        async function setupFirestoreListener(isAdmin) {
+            if (!userId) return;
+            
+            if (window.firestoreUnsubscribers && window.firestoreUnsubscribers.length > 0) {
+                window.firestoreUnsubscribers.forEach(unsub => unsub());
+                window.firestoreUnsubscribers = [];
             }
-            data.tickDates = data.tickDates
-                .filter(d => d)
-                .map((date, index) => ({ date, index }))
-                .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .map(item => item.date);
-
-            return {
-                id: docSnap.id,
-                userId: uid,
-                userName: displayName,
-                userBook: userBook,
-                ...data
-            };
-        };
-
-        // SET UP REAL-TIME LISTENERS for ALL users (including current user)
-        usersSnap.docs.forEach((userDoc) => {
-            const uid = userDoc.id;
-            const userData = userDoc.data() || {};
-            const displayName = userData.name || userData.email?.split('@')[0] || "Unknown";
-            const userBook = userData.book || "—";
-
-            const colRef = collection(db, `artifacts/${appId}/users/${uid}/januarycontributors`);
             
-            // Real-time listener for contributors
-            const unsubscribe = onSnapshot(colRef, (snap) => {
-                // **KEY FIX**: Map snap.docs to a Map for deduplication BEFORE adding to allContributors
-                const newContributorsMap = new Map();
+            allContributors = [];
+            window.setupListenersInitialized = true;
+
+            try {
+                const usersSnap = await getDocs(collection(db, "users"));
                 
-                snap.docs.forEach(doc => {
-                    const normalized = normalizeContributor(doc, uid, displayName, userBook);
-                    newContributorsMap.set(`${normalized.id}_${normalized.userId}`, normalized);
+                const normalizeContributor = (docSnap, uid, displayName, userBook) => {
+                    let data = docSnap.data() || {};
+                    if (!Array.isArray(data.tickDates)) data.tickDates = [];
+                    if (!Array.isArray(data.withdrawals)) data.withdrawals = [];
+                    if (!Array.isArray(data.correctionHistory)) data.correctionHistory = [];
+                    if (typeof data.totalContributions !== 'number') {
+                        data.totalContributions = data.deposit || 0;
+                    }
+                    data.tickDates = data.tickDates
+                        .filter(d => d)
+                        .map((date, index) => ({ date, index }))
+                        .sort((a, b) => new Date(a.date) - new Date(b.date))
+                        .map(item => item.date);
+
+                    return {
+                        id: docSnap.id,
+                        userId: uid,
+                        userName: displayName,
+                        userBook: userBook,
+                        ...data
+                    };
+                };
+
+                usersSnap.docs.forEach((userDoc) => {
+                    const uid = userDoc.id;
+                    const userData = userDoc.data() || {};
+                    const displayName = userData.name || userData.email?.split('@')[0] || "Unknown";
+                    const userBooks = userData.books || [];
+
+                    userBooks.forEach(book => {
+                        const colRef = collection(db, `artifacts/${appId}/users/${uid}/januarycontributors`);
+                        
+                        const unsubscribe = onSnapshot(colRef, (snap) => {
+                            const newContributorsMap = new Map();
+                            
+                            snap.docs.forEach(doc => {
+                                const docData = doc.data();
+                                if (docData.book === book) {
+                                    const normalized = normalizeContributor(doc, uid, displayName, book);
+                                    newContributorsMap.set(`${normalized.id}_${normalized.userId}`, normalized);
+                                }
+                            });
+                            
+                            allContributors = allContributors.filter(c => !(c.userId === uid && c.userBook === book));
+                            allContributors.push(...Array.from(newContributorsMap.values()));
+                            allContributors.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+                            
+                            filterAndRender();
+                            if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+                            
+                        }, (error) => {
+                            console.error("Real-time listener error for user " + uid + ":", error);
+                        });
+                        
+                        window.firestoreUnsubscribers.push(unsubscribe);
+                    });
                 });
-                
-                // Remove old contributors for this user
-                allContributors = allContributors.filter(c => c.userId !== uid);
-                
-                // Add new contributors from the map (eliminates duplicates)
-                allContributors.push(...Array.from(newContributorsMap.values()));
-                
-                // Sort globally
-                allContributors.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-                
-                // Render
-                filterAndRender();
-                if (allContributors.length > 0) tableContainer.classList.remove('hidden');
-                
-            }, (error) => {
-                console.error("Real-time listener error for user " + uid + ":", error);
-            });
-            
-            window.firestoreUnsubscribers.push(unsubscribe);
-        });
 
-    } catch (err) {
-        console.error("Admin load failed:", err);
-        showMessage('Error', 'Failed to load all contributors. Please refresh.');
-    }
-}
-
+            } catch (err) {
+                console.error("Admin load failed:", err);
+                showMessage('Error', 'Failed to load all contributors. Please refresh.');
+            }
+        }
 
         // --- Filter and Render ---
         function filterAndRender() {
-    const query = searchInput.value.toLowerCase().trim();
-    
-    // **AGGRESSIVE DEDUPLICATION**: Use Map to eliminate duplicates
-    const uniqueMap = new Map();
-    allContributors.forEach(c => {
-        const key = `${c.id}_${c.userId}`;
-        uniqueMap.set(key, c);
-    });
-    
-    // Update allContributors to remove any duplicates
-    allContributors = Array.from(uniqueMap.values());
-    
-    filteredContributors = allContributors.filter(contributor => {
-        const matchesSearch = query === '' ||
-            contributor.name.toLowerCase().includes(query) ||
-            contributor.regNo.toLowerCase().includes(query) ||
-            contributor.userName.toLowerCase().includes(query);
-        
-        const matchesBook = selectedBook === "All Books" || contributor.userBook === selectedBook;
-        
-        const matchesMonth = selectedMonth === '' || contributor.month.toLowerCase() === selectedMonth.toLowerCase();
-        
-        return matchesSearch && matchesBook && matchesMonth;
-    });
-    
-    renderActivityLog();
-    renderContributorTable();
-}
-
-        // --- Book Tab Selection ---
-        document.querySelectorAll('.book-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.book-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                selectedBook = tab.getAttribute('data-book');
-                filterAndRender();
+            const query = searchInput.value.toLowerCase().trim();
+            
+            const uniqueMap = new Map();
+            allContributors.forEach(c => {
+                const key = `${c.id}_${c.userId}`;
+                uniqueMap.set(key, c);
             });
+            
+            allContributors = Array.from(uniqueMap.values());
+            
+            filteredContributors = allContributors.filter(contributor => {
+                const matchesSearch = query === '' ||
+                    contributor.name.toLowerCase().includes(query) ||
+                    contributor.regNo.toLowerCase().includes(query) ||
+                    contributor.userName.toLowerCase().includes(query);
+                
+                const matchesBook = selectedBook === "All" || contributor.userBook === selectedBook;
+                const matchesMonth = selectedMonth === '' || contributor.month.toLowerCase() === selectedMonth.toLowerCase();
+                
+                return matchesSearch && matchesBook && matchesMonth;
+            });
+            
+            renderActivityLog();
+            renderContributorTable();
+        }
+
+        bookSelector.addEventListener('change', (e) => {
+            selectedBook = e.target.value;
+            filterAndRender();
         });
 
         async function updateContributor(id, data, contributorUserId) {
@@ -417,7 +357,6 @@ async function setupFirestoreListener(isAdmin) {
             }
         }
 
-        // --- Search and Filter Functionality ---
         searchInput.addEventListener('input', filterAndRender);
         searchMonth.addEventListener('change', (e) => {
             selectedMonth = e.target.value;
@@ -466,7 +405,6 @@ async function setupFirestoreListener(isAdmin) {
         async function renderContributorTable() {
             contributorTableBody.innerHTML = '';
             
-            // Remove duplicates from filtered contributors
             const seen = new Set();
             const uniqueFiltered = filteredContributors.filter(c => {
                 const key = `${c.id}_${c.userId}`;
@@ -482,9 +420,6 @@ async function setupFirestoreListener(isAdmin) {
                 maxDayColumns = newMaxDays;
                 updateHeaderDays(maxDayColumns);
             }
-            
-            const userDoc = await getDoc(doc(db, "users", userId));
-            const isAdmin = userDoc.exists() && userDoc.data().role === "admin";
             
             uniqueFiltered.forEach(contributor => {
                 const withdrawals = contributor.withdrawals;
@@ -565,7 +500,92 @@ async function setupFirestoreListener(isAdmin) {
             }).join('');
         }
 
-        // --- Daily Incomes Modal with Download ---
+        // --- Modal Functions ---
+        function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '') {
+            customInputModalTitle.textContent = title;
+            customInputModalInput.placeholder = placeholder;
+            customInputModalInput.value = defaultAmount;
+            customInputModalDate.value = defaultDate || formatDateForInput(new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }));
+            customInputModalReason.value = '';
+            customInputModalBtn.textContent = buttonText;
+            customInputModal.classList.remove('hidden');
+            const submitHandler = () => {
+                const amount = parseFloat(customInputModalInput.value);
+                const selectedDate = customInputModalDate.value;
+                const reason = customInputModalReason.value.trim() || 'No reason provided';
+                if (isNaN(amount) || amount <= 0) {
+                    showMessage('Error', 'Please enter a valid positive number.');
+                    return;
+                }
+                if (!selectedDate) {
+                    showMessage('Error', 'Please select a valid date.');
+                    return;
+                }
+                callback(amount, selectedDate, reason);
+                customInputModal.classList.add('hidden');
+                customInputModalBtn.removeEventListener('click', submitHandler);
+            };
+            customInputModalBtn.addEventListener('click', submitHandler);
+        }
+
+        function showHistoryModal(history) {
+            historyModalText.innerHTML = history.length > 0
+                ? history.map(h => `
+                    <div class="border-b py-2">
+                        <p><strong>Date:</strong> ${h.date}</p>
+                        <p><strong>Old Amount:</strong> ₦${h.oldAmount.toFixed(2)}</p>
+                        <p><strong>New Amount:</strong> ₦${h.newAmount.toFixed(2)}</p>
+                        <p><strong>Reason:</strong> ${h.reason}</p>
+                    </div>
+                `).join('')
+                : '<p>No correction history available.</p>';
+            historyModal.classList.remove('hidden');
+        }
+
+        function showConfirmationModal(title, text, onConfirm) {
+            confirmationModalTitle.textContent = title;
+            confirmationModalText.textContent = text;
+            confirmationModal.classList.remove('hidden');
+            const handleYes = () => {
+                onConfirm();
+                confirmationModal.classList.add('hidden');
+                confirmationModalYesBtn.removeEventListener('click', handleYes);
+                confirmationModalNoBtn.removeEventListener('click', handleNo);
+            };
+            const handleNo = () => {
+                confirmationModal.classList.add('hidden');
+                confirmationModalYesBtn.removeEventListener('click', handleYes);
+                confirmationModalNoBtn.removeEventListener('click', handleNo);
+            };
+            confirmationModalYesBtn.addEventListener('click', handleYes);
+            confirmationModalNoBtn.addEventListener('click', handleNo);
+        }
+
+        function showDateFilterModal(title, callback) {
+            dateFilterModalTitle.textContent = title;
+            dateFilterStartDate.value = '';
+            dateFilterEndDate.value = '';
+            dateFilterModal.classList.remove('hidden');
+            
+            const submitHandler = () => {
+                const startDate = dateFilterStartDate.value;
+                const endDate = dateFilterEndDate.value;
+                if (!startDate || !endDate) {
+                    showMessage('Error', 'Please select both start and end dates.');
+                    return;
+                }
+                if (new Date(startDate) > new Date(endDate)) {
+                    showMessage('Error', 'Start date must be before end date.');
+                    return;
+                }
+                callback(startDate, endDate);
+                dateFilterModal.classList.add('hidden');
+                dateFilterBtn.removeEventListener('click', submitHandler);
+            };
+            dateFilterBtn.addEventListener('click', submitHandler);
+        }
+
+        // --- Daily Incomes Modal with Date Filter ---
         function showDailyIconsModal() {
             if (filteredContributors.length === 0) {
                 dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
@@ -588,63 +608,69 @@ async function setupFirestoreListener(isAdmin) {
                 return transactions;
             });
 
-            const depositsByDate = new Map();
-            allDeposits.forEach(dep => {
-                const dateStr = dep.date;
-                if (!depositsByDate.has(dateStr)) {
-                    depositsByDate.set(dateStr, []);
-                }
-                depositsByDate.get(dateStr).push(dep);
-            });
+            const renderIncomeStatement = (dataToDisplay) => {
+                const depositsByDate = new Map();
+                dataToDisplay.forEach(dep => {
+                    const dateStr = dep.date;
+                    if (!depositsByDate.has(dateStr)) {
+                        depositsByDate.set(dateStr, []);
+                    }
+                    depositsByDate.get(dateStr).push(dep);
+                });
 
-            const sortedDates = Array.from(depositsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
-            dailyIconsModalText.innerHTML = `
-                <div class="py-3 px-4">
-                    <div class="flex justify-between mb-4">
-                        <h4 class="font-bold text-lg text-gray-800">Daily Income Statement - ${selectedBook}</h4>
-                        <button onclick="downloadIncomeCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm">📥 Download CSV</button>
-                    </div>
-                    ${sortedDates.length > 0
-                        ? sortedDates.map(date => {
-                            const items = depositsByDate.get(date);
-                            const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
-                            return `
-                                <div class="mt-2 p-3 bg-green-50 border-l-4 border-green-500 rounded">
-                                    <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
-                                    <table class="w-full text-sm mt-2 border-collapse">
-                                        <thead class="bg-green-100">
-                                            <tr>
-                                                <th class="border px-2 py-1 text-left">Contributor</th>
-                                                <th class="border px-2 py-1 text-left">Book</th>
-                                                <th class="border px-2 py-1 text-right">Amount (₦)</th>
-                                                <th class="border px-2 py-1 text-left">Type</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${items.map(item => `
-                                                <tr class="border-b">
-                                                    <td class="border px-2 py-1">${item.contributorName}</td>
-                                                    <td class="border px-2 py-1">${item.book}</td>
-                                                    <td class="border px-2 py-1 text-right font-semibold text-green-600">₦${item.amount.toFixed(2)}</td>
-                                                    <td class="border px-2 py-1">${item.type}</td>
+                const sortedDates = Array.from(depositsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+                return `
+                    <div class="py-3 px-4">
+                        <div class="flex justify-between mb-4 flex-wrap gap-2">
+                            <h4 class="font-bold text-lg text-gray-800">Daily Income Statement - Book ${selectedBook}</h4>
+                            <div class="flex gap-2">
+                                <button onclick="openIncomeFilter()" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">📅 Filter by Date</button>
+                                <button onclick="downloadIncomeCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm">📥 Download CSV</button>
+                            </div>
+                        </div>
+                        ${sortedDates.length > 0
+                            ? sortedDates.map(date => {
+                                const items = depositsByDate.get(date);
+                                const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
+                                return `
+                                    <div class="mt-2 p-3 bg-green-50 border-l-4 border-green-500 rounded">
+                                        <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
+                                        <table class="w-full text-sm mt-2 border-collapse">
+                                            <thead class="bg-green-100">
+                                                <tr>
+                                                    <th class="border px-2 py-1 text-left">Contributor</th>
+                                                    <th class="border px-2 py-1 text-left">Book</th>
+                                                    <th class="border px-2 py-1 text-right">Amount (₦)</th>
+                                                    <th class="border px-2 py-1 text-left">Type</th>
                                                 </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                    <p class="font-semibold mt-2 text-green-700">Daily Total: ₦${dailyTotal.toFixed(2)}</p>
-                                </div>
-                            `;
-                        }).join('')
-                        : '<p>No deposits recorded.</p>'}
-                </div>
-            `;
-            dailyIconsModal.classList.remove('hidden');
+                                            </thead>
+                                            <tbody>
+                                                ${items.map(item => `
+                                                    <tr class="border-b">
+                                                        <td class="border px-2 py-1">${item.contributorName}</td>
+                                                        <td class="border px-2 py-1">${item.book}</td>
+                                                        <td class="border px-2 py-1 text-right font-semibold text-green-600">₦${item.amount.toFixed(2)}</td>
+                                                        <td class="border px-2 py-1">${item.type}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                        <p class="font-semibold mt-2 text-green-700">Daily Total: ₦${dailyTotal.toFixed(2)}</p>
+                                    </div>
+                                `;
+                            }).join('')
+                            : '<p>No deposits recorded.</p>'}
+                    </div>
+                `;
+            };
 
-            // Store data globally for download
+            dailyIconsModalText.innerHTML = renderIncomeStatement(allDeposits);
+            dailyIconsModal.classList.remove('hidden');
             window.currentIncomeData = allDeposits;
+            window.renderIncomeStatement = renderIncomeStatement;
         }
 
-        // --- Daily Payouts Modal with Download ---
+        // --- Daily Payouts Modal with Date Filter ---
         function showExpensesModal() {
             if (filteredContributors.length === 0) {
                 expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
@@ -667,65 +693,93 @@ async function setupFirestoreListener(isAdmin) {
                 return transactions;
             });
 
-            const withdrawalsByDate = new Map();
-            allWithdrawals.forEach(w => {
-                const dateStr = w.date;
-                if (!withdrawalsByDate.has(dateStr)) {
-                    withdrawalsByDate.set(dateStr, []);
-                }
-                withdrawalsByDate.get(dateStr).push(w);
-            });
+            const renderPayoutStatement = (dataToDisplay) => {
+                const withdrawalsByDate = new Map();
+                dataToDisplay.forEach(w => {
+                    const dateStr = w.date;
+                    if (!withdrawalsByDate.has(dateStr)) {
+                        withdrawalsByDate.set(dateStr, []);
+                    }
+                    withdrawalsByDate.get(dateStr).push(w);
+                });
 
-            const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
-            expensesModalText.innerHTML = `
-                <div class="py-3 px-4">
-                    <div class="flex justify-between mb-4">
-                        <h4 class="font-bold text-lg text-gray-800">Daily Payout Statement - ${selectedBook}</h4>
-                        <button onclick="downloadPayoutCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm">📥 Download CSV</button>
-                    </div>
-                    ${sortedDates.length > 0
-                        ? sortedDates.map(date => {
-                            const items = withdrawalsByDate.get(date);
-                            const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
-                            return `
-                                <div class="mt-2 p-3 bg-orange-50 border-l-4 border-orange-500 rounded">
-                                    <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
-                                    <table class="w-full text-sm mt-2 border-collapse">
-                                        <thead class="bg-orange-100">
-                                            <tr>
-                                                <th class="border px-2 py-1 text-left">Contributor</th>
-                                                <th class="border px-2 py-1 text-left">Book</th>
-                                                <th class="border px-2 py-1 text-right">Amount (₦)</th>
-                                                <th class="border px-2 py-1 text-left">Type</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${items.map(item => `
-                                                <tr class="border-b">
-                                                    <td class="border px-2 py-1">${item.contributorName}</td>
-                                                    <td class="border px-2 py-1">${item.book}</td>
-                                                    <td class="border px-2 py-1 text-right font-semibold text-red-600">-₦${item.amount.toFixed(2)}</td>
-                                                    <td class="border px-2 py-1">${item.type}</td>
+                const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(a) - new Date(b));
+                return `
+                    <div class="py-3 px-4">
+                        <div class="flex justify-between mb-4 flex-wrap gap-2">
+                            <h4 class="font-bold text-lg text-gray-800">Daily Payout Statement - Book ${selectedBook}</h4>
+                            <div class="flex gap-2">
+                                <button onclick="openPayoutFilter()" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">📅 Filter by Date</button>
+                                <button onclick="downloadPayoutCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm">📥 Download CSV</button>
+                            </div>
+                        </div>
+                        ${sortedDates.length > 0
+                            ? sortedDates.map(date => {
+                                const items = withdrawalsByDate.get(date);
+                                const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
+                                return `
+                                    <div class="mt-2 p-3 bg-orange-50 border-l-4 border-orange-500 rounded">
+                                        <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
+                                        <table class="w-full text-sm mt-2 border-collapse">
+                                            <thead class="bg-orange-100">
+                                                <tr>
+                                                    <th class="border px-2 py-1 text-left">Contributor</th>
+                                                    <th class="border px-2 py-1 text-left">Book</th>
+                                                    <th class="border px-2 py-1 text-right">Amount (₦)</th>
+                                                    <th class="border px-2 py-1 text-left">Type</th>
                                                 </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                    <p class="font-semibold mt-2 text-red-700">Daily Total: -₦${dailyTotal.toFixed(2)}</p>
-                                </div>
-                            `;
-                        }).join('')
-                        : '<p>No withdrawals recorded.</p>'}
-                </div>
-            `;
-            expensesModal.classList.remove('hidden');
+                                            </thead>
+                                            <tbody>
+                                                ${items.map(item => `
+                                                    <tr class="border-b">
+                                                        <td class="border px-2 py-1">${item.contributorName}</td>
+                                                        <td class="border px-2 py-1">${item.book}</td>
+                                                        <td class="border px-2 py-1 text-right font-semibold text-red-600">-₦${item.amount.toFixed(2)}</td>
+                                                        <td class="border px-2 py-1">${item.type}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                        <p class="font-semibold mt-2 text-red-700">Daily Total: -₦${dailyTotal.toFixed(2)}</p>
+                                    </div>
+                                `;
+                            }).join('')
+                            : '<p>No withdrawals recorded.</p>'}
+                    </div>
+                `;
+            };
 
-            // Store data globally for download
+            expensesModalText.innerHTML = renderPayoutStatement(allWithdrawals);
+            expensesModal.classList.remove('hidden');
             window.currentPayoutData = allWithdrawals;
+            window.renderPayoutStatement = renderPayoutStatement;
         }
 
-        // --- Download Functions ---
+        // --- Download Functions with Date Filtering ---
+        window.openIncomeFilter = function() {
+            showDateFilterModal('Filter Income by Date Range', (startDate, endDate) => {
+                const filtered = window.currentIncomeData.filter(item => {
+                    const itemDate = new Date(item.date);
+                    return itemDate >= new Date(startDate) && itemDate <= new Date(endDate);
+                });
+                dailyIconsModalText.innerHTML = window.renderIncomeStatement(filtered);
+                window.currentIncomeDataFiltered = filtered;
+            });
+        };
+
+        window.openPayoutFilter = function() {
+            showDateFilterModal('Filter Payout by Date Range', (startDate, endDate) => {
+                const filtered = window.currentPayoutData.filter(item => {
+                    const itemDate = new Date(item.date);
+                    return itemDate >= new Date(startDate) && itemDate <= new Date(endDate);
+                });
+                expensesModalText.innerHTML = window.renderPayoutStatement(filtered);
+                window.currentPayoutDataFiltered = filtered;
+            });
+        };
+
         window.downloadIncomeCSV = function() {
-            const data = window.currentIncomeData || [];
+            const data = window.currentIncomeDataFiltered || window.currentIncomeData || [];
             let csv = "Date,Contributor,Book,Amount,Type\n";
             data.forEach(row => {
                 csv += `"${row.date}","${row.contributorName}","${row.book}",${row.amount},"${row.type}"\n`;
@@ -739,7 +793,7 @@ async function setupFirestoreListener(isAdmin) {
         };
 
         window.downloadPayoutCSV = function() {
-            const data = window.currentPayoutData || [];
+            const data = window.currentPayoutDataFiltered || window.currentPayoutData || [];
             let csv = "Date,Contributor,Book,Amount,Type\n";
             data.forEach(row => {
                 csv += `"${row.date}","${row.contributorName}","${row.book}",${row.amount},"${row.type}"\n`;
@@ -758,7 +812,6 @@ async function setupFirestoreListener(isAdmin) {
                 logoutBtn.disabled = true;
                 logoutBtn.textContent = 'Logging out...';
                 
-                // Unsubscribe all listeners
                 if (window.firestoreUnsubscribers) {
                     window.firestoreUnsubscribers.forEach(unsubscribe => unsubscribe());
                     window.firestoreUnsubscribers = [];
@@ -780,9 +833,7 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('message-modal').addEventListener('click', (e) => {
-            if (e.target === messageModal) {
-                messageModal.classList.add('hidden');
-            }
+            if (e.target === messageModal) messageModal.classList.add('hidden');
         });
 
         document.getElementById('custom-input-modal-close').addEventListener('click', () => {
@@ -790,9 +841,7 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('custom-input-modal').addEventListener('click', (e) => {
-            if (e.target === customInputModal) {
-                customInputModal.classList.add('hidden');
-            }
+            if (e.target === customInputModal) customInputModal.classList.add('hidden');
         });
 
         document.getElementById('confirmation-modal-close').addEventListener('click', () => {
@@ -800,9 +849,7 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('confirmation-modal').addEventListener('click', (e) => {
-            if (e.target === confirmationModal) {
-                confirmationModal.classList.add('hidden');
-            }
+            if (e.target === confirmationModal) confirmationModal.classList.add('hidden');
         });
 
         document.getElementById('history-modal-close').addEventListener('click', () => {
@@ -810,9 +857,7 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('history-modal').addEventListener('click', (e) => {
-            if (e.target === historyModal) {
-                historyModal.classList.add('hidden');
-            }
+            if (e.target === historyModal) historyModal.classList.add('hidden');
         });
 
         document.getElementById('edit-modal-close').addEventListener('click', () => {
@@ -820,9 +865,7 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('edit-modal').addEventListener('click', (e) => {
-            if (e.target === editModal) {
-                editModal.classList.add('hidden');
-            }
+            if (e.target === editModal) editModal.classList.add('hidden');
         });
 
         document.getElementById('daily-icons-modal-close').addEventListener('click', () => {
@@ -830,9 +873,7 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('daily-icons-modal').addEventListener('click', (e) => {
-            if (e.target === dailyIconsModal) {
-                dailyIconsModal.classList.add('hidden');
-            }
+            if (e.target === dailyIconsModal) dailyIconsModal.classList.add('hidden');
         });
 
         document.getElementById('expenses-modal-close').addEventListener('click', () => {
@@ -840,9 +881,15 @@ async function setupFirestoreListener(isAdmin) {
         });
 
         document.getElementById('expenses-modal').addEventListener('click', (e) => {
-            if (e.target === expensesModal) {
-                expensesModal.classList.add('hidden');
-            }
+            if (e.target === expensesModal) expensesModal.classList.add('hidden');
+        });
+
+        document.getElementById('date-filter-modal-close').addEventListener('click', () => {
+            dateFilterModal.classList.add('hidden');
+        });
+
+        document.getElementById('date-filter-modal').addEventListener('click', (e) => {
+            if (e.target === dateFilterModal) dateFilterModal.classList.add('hidden');
         });
 
         document.getElementById('contribute-page-btn').addEventListener('click', () => {
@@ -942,9 +989,12 @@ async function setupFirestoreListener(isAdmin) {
                             showMessage('Error', 'Deposit would result in more than 31 ticks.');
                             return;
                         }
-                        const tickDates = [];
+                        
+                        // Generate tick dates based on new deposit
+                        let newTickDates = [];
                         const todayStr = formatDate(new Date());
-                        for (let i = 0; i < totalTicks; i++) tickDates[i] = todayStr;
+                        for (let i = 0; i < totalTicks; i++) newTickDates[i] = todayStr;
+                        
                         const updatedContributor = {
                             name: editForm['edit-name'].value,
                             regNo: editForm['edit-reg-no'].value,
@@ -952,7 +1002,7 @@ async function setupFirestoreListener(isAdmin) {
                             regAmount,
                             deposit,
                             totalContributions: deposit,
-                            tickDates,
+                            tickDates: newTickDates,
                             correctionHistory: [
                                 ...contributor.correctionHistory,
                                 {
@@ -992,129 +1042,133 @@ async function setupFirestoreListener(isAdmin) {
         window.onload = initializeFirebase;
     </script>
 
-    <!-- --- Login Container --- -->
-    <div id="login-container" class="w-full max-w-md">
-        <div id="login-form-div" class="bg-white p-8 rounded-lg shadow-2xl">
-            <h2 class="text-xl font-bold text-gray-800 mb-6">Login</h2>
-            <form id="login-form" class="grid grid-cols-1 gap-4">
-                <input type="email" id="login-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <input type="password" id="login-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Login</button>
-                <p class="text-center text-sm text-gray-600">
-                    Don't have an account? <a href="#" class="show-register-link text-blue-600 hover:underline">Register</a>
-                </p>
-                <p class="text-center text-sm text-gray-600">
-                    Forgot password? <a href="#" class="show-forgot-password-link text-blue-600 hover:underline">Reset Password</a>
-                </p>
-            </form>
+    <!-- --- Professional Header --- -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo-icon">📊</div>
+                <div class="logo-text">
+                    <h1>JANUARY BOOK</h1>
+                    <p>Admin Dashboard</p>
+                </div>
+            </div>
+            <div class="user-section">
+                <div class="avatar-circle" id="user-avatar-display">?</div>
+                <div class="user-info">
+                    <h3 id="user-name-display">Admin</h3>
+                    <p id="user-email-display">email@example.com</p>
+                </div>
+                <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300 ml-6">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
         </div>
-        <div id="register-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
-            <h2 class="text-xl font-bold text-gray-800 mb-6">Register</h2>
-            <form id="register-form" class="grid grid-cols-1 gap-4">
-                <input type="text" id="register-name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
-                <input type="email" id="register-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <input type="password" id="register-password" placeholder="Password" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Register</button>
-                <p class="text-center text-sm text-gray-600">
-                    Already have an account? <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
-                </p>
-            </form>
-        </div>
-        <div id="forgot-password-form-div" class="bg-white p-8 rounded-lg shadow-2xl hidden">
-            <h2 class="text-xl font-bold text-gray-800 mb-6">Reset Password</h2>
-            <form id="forgot-password-form" class="grid grid-cols-1 gap-4">
-                <input type="email" id="forgot-password-email" placeholder="Email" required class="border px-4 py-2 rounded-lg" />
-                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Send Reset Email</button>
-                <p class="text-center text-sm text-gray-600">
-                    Back to <a href="#" class="show-login-link text-blue-600 hover:underline">Login</a>
-                </p>
-            </form>
-        </div>
-    </div>
+    </header>
 
     <!-- --- Dashboard Container --- -->
-    <div id="dashboard-container" class="hidden w-full max-w-7xl">
-        <h1 class="text-2xl font-bold text-blue-600 mb-2" style="font-family: 'Courier New', Courier, monospace;">JANUARY ACTIVITY DASHBOARD</h1>
-        <div id="dashboard-name" class="text-lg font-semibold text-gray-700 mb-4"></div>
-        
-        <!-- Book Tabs -->
-        <div class="flex space-x-2 mb-4 bg-white rounded-lg p-2 shadow-md">
-            <button class="book-tab active" data-book="Book A">📖 Book A</button>
-            <button class="book-tab" data-book="Book B">📖 Book B</button>
-            <button class="book-tab" data-book="Book C">📖 Book C</button>
-            <button class="book-tab" data-book="Book D">📖 Book D</button>
-            <button class="book-tab" data-book="All Books">📚 All Books</button>
-        </div>
-
-        <div class="flex justify-between items-center mb-6">
-            <div></div>
-            <div class="flex space-x-4">
-                <button id="contribute-page-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
-                    Main Menu Home
-                </button>
-                <button id="show-daily-icons-btn" class="bg-teal-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300">
-                    Daily Incomes
-                </button>
-                <button id="show-expenses-btn" class="bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-orange-700 transition duration-300">
-                    Daily Payout
-                </button>
-                <button id="logout-btn" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300">
-                    Logout
-                </button>
+    <div id="dashboard-container" class="hidden w-full">
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Book Selector Dropdown -->
+            <div class="mb-4 bg-white rounded-lg p-4 shadow-md">
+                <label for="book-selector" class="block text-sm font-semibold text-gray-700 mb-2">Select Book/Alphabet:</label>
+                <select id="book-selector" class="border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-full md:w-48">
+                    <option value="A">📖 Book A</option>
+                    <option value="B">📖 Book B</option>
+                    <option value="C">📖 Book C</option>
+                    <option value="D">📖 Book D</option>
+                    <option value="E">📖 Book E</option>
+                    <option value="F">📖 Book F</option>
+                    <option value="G">📖 Book G</option>
+                    <option value="H">📖 Book H</option>
+                    <option value="I">📖 Book I</option>
+                    <option value="J">📖 Book J</option>
+                    <option value="K">📖 Book K</option>
+                    <option value="L">📖 Book L</option>
+                    <option value="M">📖 Book M</option>
+                    <option value="N">📖 Book N</option>
+                    <option value="O">📖 Book O</option>
+                    <option value="P">📖 Book P</option>
+                    <option value="Q">📖 Book Q</option>
+                    <option value="R">📖 Book R</option>
+                    <option value="S">📖 Book S</option>
+                    <option value="T">📖 Book T</option>
+                    <option value="U">📖 Book U</option>
+                    <option value="V">📖 Book V</option>
+                    <option value="W">📖 Book W</option>
+                    <option value="X">📖 Book X</option>
+                    <option value="Y">📖 Book Y</option>
+                    <option value="Z">📖 Book Z</option>
+                    <option value="All">📚 All Books</option>
+                </select>
             </div>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Activity Log</h2>
-                <div id="activity-log" class="text-sm text-gray-700 max-h-[500px] overflow-y-auto"></div>
-            </div>
-            <div id="table-container" class="hidden col-span-1 md:col-span-2">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Contributors</h2>
-                <div class="flex space-x-4 mb-4">
-                    <input id="search-input" type="text" placeholder="Search by Name, Reg No, or User" class="w-full border px-4 py-2 rounded-lg" />
-                    <select id="search-month" class="border px-4 py-2 rounded-lg">
-                        <option value="">All Months</option>
-                        <option>January</option>
-                        <option>February</option>
-                        <option>March</option>
-                        <option>April</option>
-                        <option>May</option>
-                        <option>June</option>
-                        <option>July</option>
-                        <option>August</option>
-                        <option>September</option>
-                        <option>October</option>
-                        <option>November</option>
-                        <option>December</option>
-                    </select>
+            <div class="flex justify-between items-center mb-6">
+                <div></div>
+                <div class="flex space-x-4">
+                    <button id="contribute-page-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                        <i class="fas fa-home"></i> Main Menu
+                    </button>
+                    <button id="show-daily-icons-btn" class="bg-teal-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300">
+                        <i class="fas fa-money-bill"></i> Daily Incomes
+                    </button>
+                    <button id="show-expenses-btn" class="bg-orange-600 text-white font-semibold px-4 py-2 rounded-lg shadow-lg hover:bg-orange-700 transition duration-300">
+                        <i class="fas fa-credit-card"></i> Daily Payout
+                    </button>
                 </div>
-                <div class="overflow-x-auto rounded-lg shadow-md">
-                    <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
-                        <thead class="bg-blue-200 text-gray-800" id="table-head">
-                            <tr id="table-header-row">
-                                <th class="border px-4 py-2 min-w-[100px]">Name</th>
-                                <th class="border px-4 py-2 min-w-[120px]">User</th>
-                                <th class="border px-4 py-2 min-w-[80px]">Book</th>
-                                <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
-                                <th class="border px-4 py-2 min-w-[100px]">Month</th>
-                                <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
-                                <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
-                                <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
-                                <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
-                                <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
-                                <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
-                                <th class="border px-4 py-2 min-w-[100px]">Total Ticks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="contributor-table" class="bg-white"></tbody>
-                    </table>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Activity Log</h2>
+                    <div id="activity-log" class="text-sm text-gray-700 max-h-[500px] overflow-y-auto"></div>
+                </div>
+                <div id="table-container" class="hidden col-span-1 md:col-span-2">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Contributors</h2>
+                    <div class="flex space-x-4 mb-4">
+                        <input id="search-input" type="text" placeholder="Search by Name, Reg No, or User" class="w-full border px-4 py-2 rounded-lg" />
+                        <select id="search-month" class="border px-4 py-2 rounded-lg">
+                            <option value="">All Months</option>
+                            <option>January</option>
+                            <option>February</option>
+                            <option>March</option>
+                            <option>April</option>
+                            <option>May</option>
+                            <option>June</option>
+                            <option>July</option>
+                            <option>August</option>
+                            <option>September</option>
+                            <option>October</option>
+                            <option>November</option>
+                            <option>December</option>
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg shadow-md">
+                        <table id="contributor-table-full" class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
+                            <thead class="bg-blue-200 text-gray-800" id="table-head">
+                                <tr id="table-header-row">
+                                    <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                                    <th class="border px-4 py-2 min-w-[120px]">User</th>
+                                    <th class="border px-4 py-2 min-w-[80px]">Book</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">Month</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
+                                    <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
+                                    <th class="border px-4 py-2 min-w-[100px]">Total Ticks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contributor-table" class="bg-white"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- --- Custom Input Modal --- -->
+    <!-- --- Modals --- -->
     <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1134,7 +1188,6 @@ async function setupFirestoreListener(isAdmin) {
         </div>
     </div>
 
-    <!-- --- Message Modal --- -->
     <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1149,7 +1202,6 @@ async function setupFirestoreListener(isAdmin) {
         </div>
     </div>
 
-    <!-- --- Confirmation Modal --- -->
     <div id="confirmation-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1168,7 +1220,6 @@ async function setupFirestoreListener(isAdmin) {
         </div>
     </div>
 
-    <!-- --- History Modal --- -->
     <div id="history-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1183,7 +1234,6 @@ async function setupFirestoreListener(isAdmin) {
         </div>
     </div>
 
-    <!-- --- Edit Modal --- -->
     <div id="edit-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-6">
@@ -1214,14 +1264,14 @@ async function setupFirestoreListener(isAdmin) {
                 </select>
                 <input type="number" id="edit-reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
                 <input type="number" id="edit-deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
+                <p class="text-xs text-gray-500">Note: Ticks will be automatically calculated and adjusted based on the new deposit amount.</p>
                 <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Update Entry</button>
             </form>
         </div>
     </div>
 
-    <!-- --- Daily Incomes Modal --- -->
     <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
                 <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
@@ -1234,9 +1284,8 @@ async function setupFirestoreListener(isAdmin) {
         </div>
     </div>
 
-    <!-- --- Expenses Modal --- -->
     <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
-        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-800">Daily Payout</h3>
                 <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
@@ -1246,6 +1295,41 @@ async function setupFirestoreListener(isAdmin) {
                 </button>
             </div>
             <div id="expenses-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <div id="date-filter-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="date-filter-modal-title" class="text-xl font-bold text-gray-800">Filter by Date Range</h3>
+                <button id="date-filter-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
+                    <input type="date" id="date-filter-start-date" class="w-full border px-4 py-2 rounded-lg" />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
+                    <input type="date" id="date-filter-end-date" class="w-full border px-4 py-2 rounded-lg" />
+                </div>
+                <button id="date-filter-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Container -->
+    <div id="login-container" class="hidden w-full max-w-md mx-auto mt-20">
+        <div class="bg-white p-8 rounded-lg shadow-2xl">
+            <h2 class="text-2xl font-bold text-blue-600 mb-4 text-center">Admin Dashboard</h2>
+            <p class="text-gray-600 text-center mb-6">Please log in with your admin account to continue.</p>
+            <p class="text-center text-sm text-gray-700">
+                If you don't have an account or need to log in, please go to the <a href="admin.html" class="text-blue-600 font-semibold hover:underline">Admin Login Page</a>.
+            </p>
         </div>
     </div>
 </body>

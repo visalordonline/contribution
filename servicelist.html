@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROSPEROUS CO-OPERATIVE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.5); }
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-200 min-h-screen flex items-center justify-center">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+            authDomain: "contribution-c5309.firebaseapp.com",
+            projectId: "contribution-c5309",
+            messagingSenderId: "800641687170",
+            appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+            measurementId: "G-DTJGZE3JEP"
+        };
+
+        // --- Global Variables ---
+        let auth;
+
+        // --- DOM Elements ---
+        const loadingContainer = document.getElementById('loading-container');
+        const mainContainer = document.getElementById('main-container');
+        const logoutBtn = document.getElementById('logout-btn');
+        const messageModal = document.getElementById('message-modal');
+        const messageModalText = document.getElementById('message-modal-text');
+        const messageModalTitle = document.getElementById('message-modal-title');
+
+        // --- Firebase Initialization ---
+        function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, (user) => {
+                    console.log('Auth state changed:', user);
+                    if (user) {
+                        // User is logged in, show main container
+                        loadingContainer.classList.add('hidden');
+                        mainContainer.classList.remove('hidden');
+                    } else {
+                        // User is not logged in, redirect to login page
+                        console.log('User not logged in, redirecting to login.html');
+                        window.location.href = 'login.html';
+                    }
+                });
+            } catch (error) {
+                showMessage('Error', `Failed to initialize the application: ${error.message}`);
+                loadingContainer.classList.add('hidden');
+            }
+        }
+
+        // --- UI/Modal Functions ---
+        function showMessage(title, text) {
+            messageModalTitle.textContent = title;
+            messageModalText.textContent = text;
+            messageModal.classList.remove('hidden');
+            setTimeout(() => {
+                messageModal.classList.add('hidden');
+            }, 3000);
+        }
+
+        // --- Logout Logic ---
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                logoutBtn.disabled = true;
+                logoutBtn.textContent = 'Logging out...';
+                await signOut(auth);
+                sessionStorage.removeItem('user');
+                showMessage('Success', 'Logged out successfully!');
+                // Redirect to login after showing message
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
+            } catch (error) {
+                showMessage('Error', `Logout failed: ${error.message}`);
+            } finally {
+                logoutBtn.disabled = false;
+                logoutBtn.textContent = 'Logout';
+            }
+        });
+
+        // --- Modal Close Events ---
+        document.getElementById('message-modal-close').addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+        document.getElementById('message-modal').addEventListener('click', function(e) {
+            if (e.target === messageModal) {
+                messageModal.classList.add('hidden');
+            }
+        });
+
+        // Initialize Firebase on page load
+        window.onload = initializeFirebase;
+    </script>
+
+    <!-- --- Loading Container --- -->
+    <div id="loading-container" class="flex flex-col items-center justify-center min-h-screen">
+        <div class="loading-spinner mb-4"></div>
+        <p class="text-gray-700 text-lg font-semibold">Loading...</p>
+    </div>
+
+    <!-- --- Main Container --- -->
+    <div id="main-container" class="container mx-auto flex flex-col items-center justify-center min-h-screen hidden p-4">
+        <div class="mb-10">
+            <h1 class="text-4xl font-extrabold text-blue-700 text-center drop-shadow-lg tracking-wide mb-2">PROSPEROUS CO-OPERATIVE</h1>
+            <div class="w-24 h-1 bg-blue-400 rounded mx-auto"></div>
+        </div>
+        
+        <div class="flex justify-end w-full max-w-3xl mb-6">
+            <button 
+                id="logout-btn" 
+                class="bg-red-600 text-white font-semibold px-6 py-2 rounded-lg shadow-lg hover:bg-red-700 transition duration-300"
+            >
+                Logout
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
+            <a href="daily.html" class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform duration-200">📖</div>
+                <h1 class="text-xl font-bold mb-2 text-green-700 text-center">DAILY CONTRIBUTION BOOK</h1>
+                <p class="text-sm text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Click to open</p>
+            </a>
+            
+            <a href="6month.html" class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform duration-200">📅</div>
+                <h1 class="text-xl font-bold mb-2 text-green-700 text-center">6 MONTH CONTRIBUTION BOOK</h1>
+                <p class="text-sm text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Click to open</p>
+            </a>
+            
+            <a href="January.html" class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform duration-200">🗓️</div>
+                <h1 class="text-xl font-bold mb-2 text-green-700 text-center">JANUARY CONTRIBUTION BOOK</h1>
+                <p class="text-sm text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Click to open</p>
+            </a>
+            
+            <a href="minibook.html" class="mini-book bg-white shadow-lg rounded-xl p-8 flex flex-col items-center hover:scale-105 hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                <div class="text-5xl mb-4 group-hover:scale-110 transition-transform duration-200">📔</div>
+                <h1 class="text-xl font-bold mb-2 text-green-700 text-center">MINI BOOK</h1>
+                <p class="text-sm text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Click to open</p>
+            </a>
+        </div>
+    </div>
+
+    <!-- --- Custom Modal for Messages --- -->
+    <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
+                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="message-modal-text" class="text-gray-700"></p>
+        </div>
+    </div>
+</body>
+</html>
