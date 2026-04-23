@@ -7,6 +7,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css.css">
+    <style>
+        /* Dropdown Menu Styles */
+        .dropdown-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            width: 160px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            z-index: 50;
+            min-width: max-content;
+        }
+
+        .dropdown-menu.hidden {
+            display: none !important;
+        }
+
+        .dropdown-menu.show {
+            display: block !important;
+        }
+
+        .dropdown-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+            color: #374151;
+        }
+
+        .dropdown-menu button:hover {
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .dropdown-menu button:first-child {
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+
+        .dropdown-menu button:last-child {
+            border-radius: 0 0 0.375rem 0.375rem;
+        }
+
+        .dropdown-btn {
+            position: relative;
+        }
+
+        .actions-cell {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
 
@@ -72,6 +130,7 @@
         const expensesModal = document.getElementById('expenses-modal');
         const expensesModalText = document.getElementById('expenses-modal-text');
         const contributorModal = document.getElementById('contributor-modal');
+        const editModal = document.getElementById('edit-modal');
 
         function getCurrentDateStr() {
             const d = new Date();
@@ -262,6 +321,7 @@
         document.getElementById('history-modal-close').addEventListener('click', () => { historyModal.classList.add('hidden'); });
         document.getElementById('daily-icons-modal-close').addEventListener('click', () => { dailyIconsModal.classList.add('hidden'); });
         document.getElementById('expenses-modal-close').addEventListener('click', () => { expensesModal.classList.add('hidden'); });
+        document.getElementById('edit-modal-close').addEventListener('click', () => { editModal.classList.add('hidden'); });
         document.getElementById('contributor-modal').addEventListener('click', function(e) { if (e.target === contributorModal) { contributorModal.classList.add('hidden'); } });
         document.getElementById('history-modal').addEventListener('click', function(e) { if (e.target === historyModal) { historyModal.classList.add('hidden'); } });
         document.getElementById('message-modal').addEventListener('click', function(e) { if (e.target === messageModal) { messageModal.classList.add('hidden'); } });
@@ -269,6 +329,7 @@
         document.getElementById('confirmation-modal').addEventListener('click', function(e) { if (e.target === confirmationModal) { confirmationModal.classList.add('hidden'); } });
         document.getElementById('daily-icons-modal').addEventListener('click', function(e) { if (e.target === dailyIconsModal) { dailyIconsModal.classList.add('hidden'); } });
         document.getElementById('expenses-modal').addEventListener('click', function(e) { if (e.target === expensesModal) { expensesModal.classList.add('hidden'); } });
+        document.getElementById('edit-modal').addEventListener('click', function(e) { if (e.target === editModal) { editModal.classList.add('hidden'); } });
 
         logoutBtn.addEventListener('click', async () => {
             try {
@@ -388,6 +449,36 @@
             }
         }
 
+        function bindDropdownListeners() {
+            // Close all dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown-btn') && !e.target.closest('.dropdown-menu')) {
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        menu.classList.add('hidden');
+                    });
+                }
+            });
+
+            // Toggle dropdown on button click
+            document.querySelectorAll('.dropdown-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const dropdownId = btn.getAttribute('data-toggle');
+                    const dropdown = document.getElementById(dropdownId);
+                    
+                    // Close all other dropdowns
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        if (menu.id !== dropdownId) {
+                            menu.classList.add('hidden');
+                        }
+                    });
+                    
+                    // Toggle current dropdown
+                    dropdown.classList.toggle('hidden');
+                });
+            });
+        }
+
         function renderTable(contributors) {
             const seen = new Set();
             const uniqueContributors = contributors.filter(c => {
@@ -417,9 +508,16 @@
                     <td class="border px-4 py-2">
                         <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${(contributor.deposit || 0).toFixed(2)}</div>
                         ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
-                        <div class="flex flex-wrap space-x-1 mt-1">
-                            <button class="bg-purple-600 text-white text-xs px-2 py-1 rounded withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
-                            <button class="bg-green-600 text-white text-xs px-2 py-1 rounded add-btn" data-id="${contributor.id}">+ Add</button>
+                        <div class="flex flex-wrap space-x-1 mt-1 actions-cell">
+                            <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded dropdown-btn" data-id="${contributor.id}" data-toggle="dropdown-${contributor.id}">
+                                ⋮ Actions
+                            </button>
+                            <div id="dropdown-${contributor.id}" class="dropdown-menu hidden">
+                                <button class="add-btn" data-id="${contributor.id}">+ Add Income</button>
+                                <button class="withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
+                                <button class="edit-btn" data-id="${contributor.id}">✏️ Edit</button>
+                                <button class="history-btn" data-id="${contributor.id}">📋 History</button>
+                            </div>
                         </div>
                     </td>
                     <td class="border px-4 py-2 withdrawal-1">
@@ -440,6 +538,7 @@
                 contributorTableBody.appendChild(row);
             });
             bindButtonListeners();
+            bindDropdownListeners();
         }
 
         function updateHeaderDays(newMaxDays) {
@@ -467,8 +566,9 @@
         }
 
         function bindButtonListeners() {
-            document.querySelectorAll('.add-btn, .withdraw-btn, .correct-btn, .history-btn').forEach(button => {
+            document.querySelectorAll('.add-btn, .withdraw-btn, .correct-btn, .history-btn, .edit-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const contributorId = e.target.getAttribute('data-id');
                     const contributor = allContributors.find(c => c.id === contributorId);
                     if (!contributor) {
@@ -573,6 +673,75 @@
                         }, contributor.deposit.toFixed(2), formatDateForInput(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr()));
                     } else if (e.target.classList.contains('history-btn')) {
                         showHistoryModal(contributor.correctionHistory);
+                    } else if (e.target.classList.contains('edit-btn')) {
+                        // EDIT FUNCTIONALITY
+                        document.getElementById('edit-name').value = contributor.name;
+                        document.getElementById('edit-reg-no').value = contributor.regNo;
+                        document.getElementById('edit-month').value = contributor.month;
+                        document.getElementById('edit-reg-amount').value = contributor.regAmount.toFixed(2);
+                        document.getElementById('edit-deposit').value = contributor.deposit.toFixed(2);
+                        
+                        editModal.classList.remove('hidden');
+                        
+                        document.getElementById('edit-form').onsubmit = async (submitEvent) => {
+                            submitEvent.preventDefault();
+                            
+                            const name = document.getElementById('edit-name').value;
+                            const regNo = document.getElementById('edit-reg-no').value;
+                            const month = document.getElementById('edit-month').value;
+                            const regAmount = parseFloat(document.getElementById('edit-reg-amount').value);
+                            const deposit = parseFloat(document.getElementById('edit-deposit').value);
+                            
+                            if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
+                                showMessage('Error', 'Please enter valid positive numbers.');
+                                return;
+                            }
+                            
+                            const totalTicks = Math.floor(deposit / regAmount);
+                            if (totalTicks > 31) {
+                                showMessage('Error', 'Deposit would result in more than 31 ticks.');
+                                return;
+                            }
+                            
+                            let newTickDates = [];
+                            const todayStr = getCurrentDateStr();
+                            for (let i = 0; i < totalTicks; i++) {
+                                newTickDates[i] = todayStr;
+                            }
+                            
+                            const newCorrectionHistory = [
+                                ...contributor.correctionHistory,
+                                {
+                                    oldAmount: contributor.deposit,
+                                    newAmount: deposit,
+                                    date: todayStr,
+                                    reason: 'Edited contributor details'
+                                }
+                            ];
+                            
+                            try {
+                                document.getElementById('edit-form').querySelector('button').disabled = true;
+                                document.getElementById('edit-form').querySelector('button').textContent = 'Updating...';
+                                
+                                await updateContributor(contributorId, {
+                                    name,
+                                    regNo,
+                                    month,
+                                    regAmount,
+                                    deposit,
+                                    totalIncome: deposit,
+                                    tickDates: newTickDates,
+                                    correctionHistory: newCorrectionHistory
+                                });
+                                
+                                editModal.classList.add('hidden');
+                            } catch (error) {
+                                showMessage('Error', `Failed to update: ${error.message}`);
+                            } finally {
+                                document.getElementById('edit-form').querySelector('button').disabled = false;
+                                document.getElementById('edit-form').querySelector('button').textContent = 'Update Entry';
+                            }
+                        };
                     }
                 });
             });
@@ -582,7 +751,6 @@
             contributorModal.classList.remove('hidden');
         });
 
-        // Daily Income - Only shows totalIncome, not affected by withdrawals
         showDailyIconsBtn.addEventListener('click', () => {
             if (allContributors.length === 0) {
                 dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
@@ -592,7 +760,6 @@
 
             const incomes = [];
             allContributors.forEach(c => {
-                // Add initial income
                 if (c.totalIncome > 0) {
                     incomes.push({
                         date: c.tickDates[0] || getCurrentDateStr(), 
@@ -603,7 +770,6 @@
                     });
                 }
                 
-                // Add individual income transactions if tracked
                 (c.incomeHistory || []).forEach(h => {
                     incomes.push({
                         date: h.date, 
@@ -701,7 +867,6 @@
             });
         });
 
-        // Daily Payout - Only shows withdrawals
         showExpensesBtn.addEventListener('click', () => {
             if (allContributors.length === 0) {
                 expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
@@ -1048,7 +1213,44 @@
         </div>
     </div>
 
-    <!-- Modals remain the same... -->
+    <!-- EDIT MODAL -->
+    <div id="edit-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Edit Contributor</h2>
+                <button id="edit-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="edit-form" class="grid grid-cols-1 gap-4">
+                <input type="text" id="edit-name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
+                <input type="text" id="edit-reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
+                <select id="edit-month" required class="border px-4 py-2 rounded-lg">
+                    <option value="">Select Month</option>
+                    <option>January</option>
+                    <option>February</option>
+                    <option>March</option>
+                    <option>April</option>
+                    <option>May</option>
+                    <option>June</option>
+                    <option>July</option>
+                    <option>August</option>
+                    <option>September</option>
+                    <option>October</option>
+                    <option>November</option>
+                    <option>December</option>
+                </select>
+                <input type="number" id="edit-reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+                <input type="number" id="edit-deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
+                <p class="text-xs text-gray-500 italic">💡 Ticks will automatically adjust based on the new deposit amount.</p>
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Update Entry</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CONTRIBUTOR MODAL -->
     <div id="contributor-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-6">
@@ -1084,6 +1286,7 @@
         </div>
     </div>
 
+    <!-- CUSTOM INPUT MODAL -->
     <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1103,6 +1306,7 @@
         </div>
     </div>
 
+    <!-- MESSAGE MODAL -->
     <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1117,6 +1321,7 @@
         </div>
     </div>
 
+    <!-- CONFIRMATION MODAL -->
     <div id="confirmation-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1135,6 +1340,7 @@
         </div>
     </div>
 
+    <!-- HISTORY MODAL -->
     <div id="history-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
             <div class="flex justify-between items-center mb-4">
@@ -1149,6 +1355,7 @@
         </div>
     </div>
 
+    <!-- DAILY ICONS MODAL -->
     <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -1163,6 +1370,7 @@
         </div>
     </div>
 
+    <!-- EXPENSES MODAL -->
     <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
         <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
