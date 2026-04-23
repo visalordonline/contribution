@@ -127,7 +127,7 @@
                             if (userDocSnap.exists()) {
                                 console.log('User data found:', userDocSnap.data());
                                 // Redirect to dashboard
-                                window.location.href = 'index.html';
+                                window.location.href = 'servicelist.html';
                             } else {
                                 console.log('User data not found in Firestore');
                                 showMessage('Warning', 'User data incomplete. Please sign up again.');
@@ -208,7 +208,7 @@
 
                     // Redirect to dashboard after short delay
                     setTimeout(() => {
-                        window.location.href = 'index.html';
+                        window.location.href = 'servicelist.html';
                     }, 1500);
                 } else {
                     console.error('User document not found');
