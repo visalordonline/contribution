@@ -533,67 +533,66 @@
     </section>
 
     <!-- Dashboard Section -->
-    <section class="dashboard-section">
-        <h2 class="section-title">📚 Available Books</h2>
-        <div class="cards-grid">
-            <!-- 6 Month Book -->
-            <a href="#" class="card login-required" data-url="admin-6.html">
-                <div class="card-header">
-                    <i class="fas fa-calendar"></i>
-                </div>
-                <div class="card-body">
-                    <h3>6 Month Book</h3>
-                    <p>Manage six-month contribution cycles</p>
-                </div>
-                <div class="card-footer">
-                    <button type="button" onclick="event.preventDefault(); triggerLogin()">Access</button>
-                </div>
-            </a>
+<section class="dashboard-section">
+    <h2 class="section-title">📚 Available Books</h2>
+    <div class="cards-grid">
+        <!-- 6 Month Book -->
+        <a href="admin-6.html" class="card" id="card-6month">
+            <div class="card-header">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="card-body">
+                <h3>6 Month Book</h3>
+                <p>Manage six-month contribution cycles</p>
+            </div>
+            <div class="card-footer">
+                <button type="button">Access</button>
+            </div>
+        </a>
 
-            <!-- January Book -->
-            <a href="#" class="card login-required" data-url="admin-jan.html">
-                <div class="card-header">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div class="card-body">
-                    <h3>January Book</h3>
-                    <p>Monthly contribution tracking</p>
-                </div>
-                <div class="card-footer">
-                    <button type="button" onclick="event.preventDefault(); triggerLogin()">Access</button>
-                </div>
-            </a>
+        <!-- January Book -->
+        <a href="admin-jan.html" class="card" id="card-january">
+            <div class="card-header">
+                <i class="fas fa-book"></i>
+            </div>
+            <div class="card-body">
+                <h3>January Book</h3>
+                <p>Monthly contribution tracking</p>
+            </div>
+            <div class="card-footer">
+                <button type="button">Access</button>
+            </div>
+        </a>
 
-            <!-- Mini Book -->
-            <a href="#" class="card login-required" data-url="admin-mini.html">
-                <div class="card-header">
-                    <i class="fas fa-credit-card"></i>
-                </div>
-                <div class="card-body">
-                    <h3>Mini Book</h3>
-                    <p>Quick access mini records</p>
-                </div>
-                <div class="card-footer">
-                    <button type="button" onclick="event.preventDefault(); triggerLogin()">Access</button>
-                </div>
-            </a>
+        <!-- Mini Book -->
+        <a href="admin-mini.html" class="card" id="card-mini">
+            <div class="card-header">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="card-body">
+                <h3>Mini Book</h3>
+                <p>Quick access mini records</p>
+            </div>
+            <div class="card-footer">
+                <button type="button">Access</button>
+            </div>
+        </a>
 
-            <!-- Daily Book -->
-            <a href="#" class="card login-required" data-url="admin-daily.html">
-                <div class="card-header">
-                    <i class="fas fa-chart-bar"></i>
-                </div>
-                <div class="card-body">
-                    <h3>Daily Book</h3>
-                    <p>Daily transaction records</p>
-                </div>
-                <div class="card-footer">
-                    <button type="button" onclick="event.preventDefault(); triggerLogin()">Access</button>
-                </div>
-            </a>
-        </div>
-    </section>
-
+        <!-- Daily Book -->
+        <a href="admin-daily.html" class="card" id="card-daily">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <div class="card-body">
+                <h3>Daily Book</h3>
+                <p>Daily transaction records</p>
+            </div>
+            <div class="card-footer">
+                <button type="button">Access</button>
+            </div>
+        </a>
+    </div>
+</section>
     <!-- Footer -->
     <section class="footer">
         <p>&copy; 2025 Prosperous Co-operative. All rights reserved.</p>
@@ -640,26 +639,26 @@
                 </form>
             </div>
 
-            <!-- Register Form -->
-            <div id="register" class="form-section">
-                <form id="register-form">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" id="register-name" placeholder="Enter your full name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" id="register-email" placeholder="Enter your email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Password</label>
-                        <input type="password" id="register-password" placeholder="Create a strong password" required>
-                    </div>
-                    <div class="form-group">
-                        <button type="submit">Create Account</button>
-                    </div>
-                </form>
-            </div>
+                    <!-- Register Form -->
+        <div id="register" class="form-section">
+            <form id="register-form">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="register-name" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="register-email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="register-password" placeholder="Create a strong password" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">Create Account</button>
+                </div>
+            </form>
+        </div>
 
             <!-- Forgot Password Form -->
             <div id="forgot" class="form-section">
@@ -680,211 +679,219 @@
     </div>
 
     <!-- Firebase Script -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+<!-- Firebase Script -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
-            authDomain: "contribution-c5309.firebaseapp.com",
-            projectId: "contribution-c5309",
-            messagingSenderId: "800641687170",
-            appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
-            measurementId: "G-DTJGZE3JEP"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+        authDomain: "contribution-c5309.firebaseapp.com",
+        projectId: "contribution-c5309",
+        messagingSenderId: "800641687170",
+        appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+        measurementId: "G-DTJGZE3JEP"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-        let pendingRedirect = null;
+    let pendingRedirect = null;
+    let isUserLoggedIn = false;
 
-        window.triggerLogin = function() {
-            document.getElementById('auth-modal').classList.remove('hidden');
-        };
+    // EXPOSE FUNCTIONS TO GLOBAL SCOPE
+    window.triggerLogin = function(url) {
+        pendingRedirect = url;
+        document.getElementById('auth-modal').classList.remove('hidden');
+    };
 
-        window.switchTab = function(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
-            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-        };
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        document.getElementById(tabName).classList.add('active');
+    };
 
-        function showMessage(message, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = message;
-            messageEl.className = `message show ${type}`;
-            setTimeout(() => messageEl.classList.remove('show'), 3000);
-        }
+    function showMessage(message, type) {
+        const messageEl = document.getElementById('message');
+        messageEl.textContent = message;
+        messageEl.className = `message show ${type}`;
+        setTimeout(() => messageEl.classList.remove('show'), 3000);
+    }
 
-        function getUserInitials(name) {
-            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-        }
+    function getUserInitials(name) {
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
 
-        // Login Form
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const btn = e.target.querySelector('button');
-
-            try {
-                btn.disabled = true;
-                btn.textContent = 'Signing in...';
-
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                const userDocRef = doc(db, "users", user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-
-                if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
-                    sessionStorage.setItem('adminUser', JSON.stringify({
-                        uid: user.uid,
-                        email: user.email,
-                        name: userDocSnap.data().name
-                    }));
-                    showMessage('Login successful!', 'success');
-                    setTimeout(() => {
-                        document.getElementById('auth-modal').classList.add('hidden');
-                        if (pendingRedirect) {
-                            window.location.href = pendingRedirect;
-                            pendingRedirect = null;
-                        }
-                    }, 1500);
-                } else {
-                    showMessage('You do not have admin access.', 'error');
-                }
-            } catch (error) {
-                showMessage(error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Sign In';
-            }
-        });
-
-        // Register Form
-        document.getElementById('register-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('register-name').value;
-            const email = document.getElementById('register-email').value;
-            const password = document.getElementById('register-password').value;
-            const btn = e.target.querySelector('button');
-
-            try {
-                btn.disabled = true;
-                btn.textContent = 'Creating account...';
-
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                await setDoc(doc(db, "users", user.uid), {
-                    name: name,
-                    email: email,
-                    role: 'admin'
-                });
-
-                sessionStorage.setItem('adminUser', JSON.stringify({
-                    uid: user.uid,
-                    email: user.email,
-                    name: name
-                }));
-
-                showMessage('Account created successfully!', 'success');
-                setTimeout(() => {
-                    document.getElementById('auth-modal').classList.add('hidden');
-                }, 1500);
-            } catch (error) {
-                showMessage(error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Create Account';
-            }
-        });
-
-        // Forgot Password Form
-        document.getElementById('forgot-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('forgot-email').value;
-            const btn = e.target.querySelector('button');
-
-            try {
-                btn.disabled = true;
-                btn.textContent = 'Sending...';
-                await sendPasswordResetEmail(auth, email);
-                showMessage('Password reset email sent. Check your inbox.', 'success');
-            } catch (error) {
-                showMessage(error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Send Reset Link';
-            }
-        });
-
-        // Modal Controls
-        document.getElementById('modal-close').addEventListener('click', () => {
-            document.getElementById('auth-modal').classList.add('hidden');
-        });
-
-        document.getElementById('auth-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'auth-modal') {
-                document.getElementById('auth-modal').classList.add('hidden');
-            }
-        });
-
-        document.getElementById('login-btn-header').addEventListener('click', triggerLogin);
-
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-                sessionStorage.removeItem('adminUser');
-                location.reload();
-            } catch (error) {
-                showMessage(error.message, 'error');
-            }
-        });
-
-        // Card links
-        document.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('button')) {
-                    e.preventDefault();
-                }
-            });
-        });
-
-        // Card buttons
-        document.querySelectorAll('.card-footer button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+    // CARD CLICK HANDLER
+    document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Get the URL from the card's href
+            const url = card.href;
+            
+            // If user is NOT logged in, prevent navigation and show login modal
+            if (!isUserLoggedIn) {
                 e.preventDefault();
-                const url = btn.closest('.card').dataset.url;
-                pendingRedirect = url;
-                triggerLogin();
-            });
-        });
-
-        // Check auth state
-        onAuthStateChanged(auth, async (user) => {
-            const userInfo = document.getElementById('user-info');
-            const loginBtn = document.getElementById('login-btn-header');
-
-            if (user) {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-
-                if (userDocSnap.exists() && userDocSnap.data().role === 'admin') {
-                    document.getElementById('user-name').textContent = userDocSnap.data().name;
-                    document.getElementById('user-email').textContent = user.email;
-                    document.getElementById('user-avatar').textContent = getUserInitials(userDocSnap.data().name);
-                    userInfo.classList.remove('hidden');
-                    loginBtn.classList.add('hidden');
-                }
-            } else {
-                userInfo.classList.add('hidden');
-                loginBtn.classList.remove('hidden');
+                window.triggerLogin(url);
             }
+            // If user IS logged in, allow normal navigation (do nothing, link will work)
         });
-    </script>
+    });
+
+    // LOGIN FORM
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const btn = e.target.querySelector('button');
+
+        try {
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
+
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            sessionStorage.setItem('adminUser', JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || email.split('@')[0]
+            }));
+            
+            showMessage('Login successful!', 'success');
+            
+            setTimeout(() => {
+                document.getElementById('auth-modal').classList.add('hidden');
+                isUserLoggedIn = true;
+                
+                if (pendingRedirect) {
+                    window.location.href = pendingRedirect;
+                    pendingRedirect = null;
+                }
+            }, 1500);
+        } catch (error) {
+            showMessage(error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    });
+
+    // REGISTER FORM
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('register-name').value;
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const btn = e.target.querySelector('button');
+
+        try {
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            await setDoc(doc(db, "users", user.uid), {
+                name: name,
+                email: email
+            });
+
+            sessionStorage.setItem('adminUser', JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                name: name
+            }));
+
+            showMessage('Account created successfully!', 'success');
+            
+            setTimeout(() => {
+                document.getElementById('auth-modal').classList.add('hidden');
+                isUserLoggedIn = true;
+                
+                if (pendingRedirect) {
+                    window.location.href = pendingRedirect;
+                    pendingRedirect = null;
+                } else {
+                    // Reload page to show user is logged in
+                    location.reload();
+                }
+            }, 1500);
+            
+        } catch (error) {
+            showMessage(error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Create Account';
+        }
+    });
+
+    // FORGOT PASSWORD FORM
+    document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('forgot-email').value;
+        const btn = e.target.querySelector('button');
+
+        try {
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            await sendPasswordResetEmail(auth, email);
+            showMessage('Password reset email sent. Check your inbox.', 'success');
+        } catch (error) {
+            showMessage(error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Reset Link';
+        }
+    });
+
+    // MODAL CONTROLS
+    document.getElementById('modal-close').addEventListener('click', () => {
+        document.getElementById('auth-modal').classList.add('hidden');
+    });
+
+    document.getElementById('auth-modal').addEventListener('click', (e) => {
+        // Don't close modal by clicking backdrop if user is not logged in
+        if (e.target.id === 'auth-modal' && !isUserLoggedIn) {
+            e.stopPropagation(); // Prevent closing
+        }
+    });
+
+    document.getElementById('login-btn-header').addEventListener('click', () => {
+        document.getElementById('auth-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        try {
+            await signOut(auth);
+            sessionStorage.removeItem('adminUser');
+            isUserLoggedIn = false;
+            location.reload();
+        } catch (error) {
+            showMessage(error.message, 'error');
+        }
+    });
+
+    // CHECK AUTH STATE ON PAGE LOAD
+    onAuthStateChanged(auth, (user) => {
+        const userInfo = document.getElementById('user-info');
+        const loginBtn = document.getElementById('login-btn-header');
+
+        if (user) {
+            isUserLoggedIn = true;
+            document.getElementById('user-name').textContent = user.displayName || user.email.split('@')[0];
+            document.getElementById('user-email').textContent = user.email;
+            document.getElementById('user-avatar').textContent = getUserInitials(user.displayName || user.email);
+            userInfo.classList.remove('hidden');
+            loginBtn.classList.add('hidden');
+        } else {
+            isUserLoggedIn = false;
+            userInfo.classList.add('hidden');
+            loginBtn.classList.remove('hidden');
+        }
+    });
+</script>
 </body>
 </html>

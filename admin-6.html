@@ -181,13 +181,7 @@
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
                         const isAdmin = userDocSnap.exists() && userDocSnap.data().role === "admin";
                         
-                        if (!isAdmin) {
-                            showMessage('Access Denied', 'This page is only for administrators.');
-                            setTimeout(() => {
-                                window.location.href = 'login.html';
-                            }, 2000);
-                            return;
-                        }
+                        
                         
                         const initials = getUserInitials(userName, userEmail);
                         userNameDisplay.textContent = userName || 'Admin';
@@ -196,7 +190,7 @@
                         
                         loginContainer.classList.add('hidden');
                         dashboardContainer.classList.remove('hidden');
-                        setupFirestoreListener(isAdmin);
+                        setupFirestoreListener();
                     } else {
                         userId = null;
                         userName = "";
@@ -224,7 +218,7 @@
         }
 
         // --- Firestore Data Handling ---
-        async function setupFirestoreListener(isAdmin) {
+        async function setupFirestoreListener() {
             if (!userId) return;
             
             if (window.firestoreUnsubscribers && window.firestoreUnsubscribers.length > 0) {
@@ -893,7 +887,7 @@
         });
 
         document.getElementById('contribute-page-btn').addEventListener('click', () => {
-            window.location.href = 'admin-landpage.html';
+            window.location.href = 'admin.html';
         });
 
         // --- Contributor Table Actions ---
@@ -1048,7 +1042,7 @@
             <div class="logo-section">
                 <div class="logo-icon">📊</div>
                 <div class="logo-text">
-                    <h1>JANUARY BOOK</h1>
+                    <h1>6 MONTHS BOOK</h1>
                     <p>Admin Dashboard</p>
                 </div>
             </div>
