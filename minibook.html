@@ -3,22 +3,19 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MINI  BOOK - Contribution Management</title>
+    <title>MINI BOOK - Contribution Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css.css">
     <style>
         /* Dropdown Menu Styles */
         .dropdown-menu {
-            position: absolute;
-            right: 0;
-            top: 100%;
-            margin-top: 0.5rem;
+            position: fixed;
             width: 160px;
             background: white;
             border: 1px solid #d1d5db;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 50;
             min-width: max-content;
         }
@@ -108,7 +105,7 @@
         const showDailyIconsBtn = document.getElementById('show-daily-icons-btn');
         const showExpensesBtn = document.getElementById('show-expenses-btn');
         const searchBar = document.getElementById('search-bar');
-        const searchMonth = document.getElementById('search-month');
+        const searchDate = document.getElementById('search-date');
         const customInputModal = document.getElementById('custom-input-modal');
         const customInputModalTitle = document.getElementById('custom-input-modal-title');
         const customInputModalInput = document.getElementById('custom-input-modal-input');
@@ -134,18 +131,58 @@
 
         function getCurrentDateStr() {
             const d = new Date();
-            return d.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+            return d.toLocaleDateString('en-NG', { year: 'numeric', month: '2-digit', day: '2-digit' });
         }
 
         function formatDateForInput(dateStr) {
             if (!dateStr) return '';
-            const date = new Date(dateStr);
-            return date.toISOString().split('T')[0];
+            try {
+                // Handle both dd/mm/yyyy and other formats
+                let parts;
+                if (dateStr.includes('/')) {
+                    parts = dateStr.split('/');
+                    if (parts.length === 3 && parts[2].length === 4) {
+                        // Already dd/mm/yyyy format
+                        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    }
+                } else if (dateStr.includes('-')) {
+                    // yyyy-mm-dd format
+                    const date = new Date(dateStr);
+                    return date.toISOString().split('T')[0];
+                }
+                const date = new Date(dateStr);
+                return date.toISOString().split('T')[0];
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function convertToDisplayFormat(isoDate) {
+            if (!isoDate) return '';
+            try {
+                const date = new Date(isoDate + 'T00:00:00Z');
+                const day = String(date.getUTCDate()).padStart(2, '0');
+                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const year = date.getUTCFullYear();
+                return `${day}/${month}/${year}`;
+            } catch (e) {
+                return isoDate;
+            }
         }
 
         function dateToComparable(dateStr) {
-            const date = new Date(dateStr);
-            return date.toISOString().split('T')[0];
+            try {
+                if (dateStr.includes('/')) {
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    }
+                }
+                const date = new Date(dateStr);
+                return date.toISOString().split('T')[0];
+            } catch (e) {
+                return dateStr;
+            }
         }
 
         function groupByDate(transactions) {
@@ -158,7 +195,7 @@
                 grouped[comparable].items.push(t);
                 grouped[comparable].total += t.amount;
             });
-            return Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date));
+            return Object.values(grouped).sort((a, b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
         }
 
         function getUserInitials(name, email) {
@@ -385,7 +422,7 @@
                     }
                     data.tickDates = data.tickDates
                         .map((date, index) => ({ date, index }))
-                        .sort((a, b) => new Date(a.date) - new Date(b.date))
+                        .sort((a, b) => new Date(dateToComparable(a.date)) - new Date(dateToComparable(b.date)))
                         .map(item => item.date);
                     
                     const normalizedDoc = { id: doc.id, ...data };
@@ -449,6 +486,37 @@
             }
         }
 
+        function positionDropdown(button, dropdown) {
+            const buttonRect = button.getBoundingClientRect();
+            const dropdownHeight = dropdown.offsetHeight || 150;
+            const dropdownWidth = dropdown.offsetWidth || 160;
+            const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
+            const spaceBelow = viewportHeight - buttonRect.bottom;
+            const spaceAbove = buttonRect.top;
+
+            let top, left;
+
+            // Position horizontally - try to align right edge with button right edge
+            left = Math.min(buttonRect.right - dropdownWidth, viewportWidth - dropdownWidth - 10);
+            left = Math.max(left, 10);
+
+            // Position vertically - dropdown or dropup based on available space
+            if (spaceBelow >= dropdownHeight + 10) {
+                // Dropdown mode (below the button)
+                top = buttonRect.bottom + 5;
+            } else if (spaceAbove >= dropdownHeight + 10) {
+                // Dropup mode (above the button)
+                top = buttonRect.top - dropdownHeight - 5;
+            } else {
+                // Not enough space either way, dropdown below by default
+                top = buttonRect.bottom + 5;
+            }
+
+            dropdown.style.top = top + 'px';
+            dropdown.style.left = left + 'px';
+        }
+
         function bindDropdownListeners() {
             // Close all dropdowns when clicking outside
             document.addEventListener('click', (e) => {
@@ -474,7 +542,30 @@
                     });
                     
                     // Toggle current dropdown
-                    dropdown.classList.toggle('hidden');
+                    if (dropdown.classList.contains('hidden')) {
+                        dropdown.classList.remove('hidden');
+                        // Position the dropdown after showing it
+                        setTimeout(() => {
+                            positionDropdown(btn, dropdown);
+                        }, 0);
+                    } else {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            });
+
+            // Reposition dropdowns on window scroll/resize
+            window.addEventListener('scroll', () => {
+                document.querySelectorAll('.dropdown-menu.show:not(.hidden)').forEach(menu => {
+                    const btn = document.querySelector(`[data-toggle="${menu.id}"]`);
+                    if (btn) positionDropdown(btn, menu);
+                });
+            }, true);
+
+            window.addEventListener('resize', () => {
+                document.querySelectorAll('.dropdown-menu.show:not(.hidden)').forEach(menu => {
+                    const btn = document.querySelector(`[data-toggle="${menu.id}"]`);
+                    if (btn) positionDropdown(btn, menu);
                 });
             });
         }
@@ -502,7 +593,7 @@
                 row.innerHTML = `
                     <td class="border px-4 py-2">${contributor.name || ''}</td>
                     <td class="border px-4 py-2">${contributor.regNo || ''}</td>
-                    <td class="border px-4 py-2">${contributor.month || ''}</td>
+                    <td class="border px-4 py-2">${contributor.date || ''}</td>
                     <td class="border px-4 py-2">${contributor.book || selectedBook || '—'}</td>
                     <td class="border px-4 py-2 reg-amt">₦${(contributor.regAmount || 0).toFixed(2)}</td>
                     <td class="border px-4 py-2">
@@ -587,13 +678,13 @@
                             const prevTicks = contributor.tickDates.length;
                             const additionalTicks = totalTicks - prevTicks;
                             let newTickDates = [...contributor.tickDates];
-                            const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const dateStr = convertToDisplayFormat(selectedDate);
                             for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
                                 newTickDates[i] = dateStr;
                             }
                             newTickDates = newTickDates
                                 .map((date, index) => ({ date, index }))
-                                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                                .sort((a, b) => new Date(dateToComparable(a.date)) - new Date(dateToComparable(b.date)))
                                 .map(item => item.date);
                             
                             const incomeHistory = contributor.incomeHistory || [];
@@ -625,7 +716,7 @@
                                 return;
                             }
                             const newDeposit = contributor.deposit - amount;
-                            const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const dateStr = convertToDisplayFormat(selectedDate);
                             const newWithdrawals = [...withdrawals, { amount, date: dateStr }];
 
                             updateContributor(contributorId, {
@@ -651,7 +742,7 @@
                                 return;
                             }
                             let newTickDates = [];
-                            const dateStr = new Date(selectedDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
+                            const dateStr = convertToDisplayFormat(selectedDate);
                             for (let i = 0; i < totalTicks; i++) {
                                 newTickDates[i] = dateStr;
                             }
@@ -670,14 +761,14 @@
                                 tickDates: newTickDates,
                                 correctionHistory: newCorrectionHistory
                             });
-                        }, contributor.deposit.toFixed(2), formatDateForInput(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr()));
+                        }, contributor.deposit.toFixed(2), formatDateForInput(dateToComparable(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr())));
                     } else if (e.target.classList.contains('history-btn')) {
                         showHistoryModal(contributor.correctionHistory);
                     } else if (e.target.classList.contains('edit-btn')) {
                         // EDIT FUNCTIONALITY
                         document.getElementById('edit-name').value = contributor.name;
                         document.getElementById('edit-reg-no').value = contributor.regNo;
-                        document.getElementById('edit-month').value = contributor.month;
+                        document.getElementById('edit-date').value = formatDateForInput(dateToComparable(contributor.date || getCurrentDateStr()));
                         document.getElementById('edit-reg-amount').value = contributor.regAmount.toFixed(2);
                         document.getElementById('edit-deposit').value = contributor.deposit.toFixed(2);
                         
@@ -688,12 +779,17 @@
                             
                             const name = document.getElementById('edit-name').value;
                             const regNo = document.getElementById('edit-reg-no').value;
-                            const month = document.getElementById('edit-month').value;
+                            const date = document.getElementById('edit-date').value;
                             const regAmount = parseFloat(document.getElementById('edit-reg-amount').value);
                             const deposit = parseFloat(document.getElementById('edit-deposit').value);
                             
                             if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
                                 showMessage('Error', 'Please enter valid positive numbers.');
+                                return;
+                            }
+                            
+                            if (!date) {
+                                showMessage('Error', 'Please select a valid date.');
                                 return;
                             }
                             
@@ -704,9 +800,9 @@
                             }
                             
                             let newTickDates = [];
-                            const todayStr = getCurrentDateStr();
+                            const dateStr = convertToDisplayFormat(date);
                             for (let i = 0; i < totalTicks; i++) {
-                                newTickDates[i] = todayStr;
+                                newTickDates[i] = dateStr;
                             }
                             
                             const newCorrectionHistory = [
@@ -714,7 +810,7 @@
                                 {
                                     oldAmount: contributor.deposit,
                                     newAmount: deposit,
-                                    date: todayStr,
+                                    date: dateStr,
                                     reason: 'Edited contributor details'
                                 }
                             ];
@@ -726,7 +822,7 @@
                                 await updateContributor(contributorId, {
                                     name,
                                     regNo,
-                                    month,
+                                    date: dateStr,
                                     regAmount,
                                     deposit,
                                     totalIncome: deposit,
@@ -781,7 +877,7 @@
                 });
             });
 
-            incomes.sort((a,b) => new Date(b.date) - new Date(a.date));
+            incomes.sort((a,b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
             const groupedByDate = groupByDate(incomes);
 
             let html = `
@@ -887,7 +983,7 @@
                 });
             });
 
-            payouts.sort((a,b) => new Date(b.date) - new Date(a.date));
+            payouts.sort((a,b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
             const groupedByDate = groupByDate(payouts);
 
             let html = `
@@ -1040,23 +1136,32 @@
             e.preventDefault();
             const regAmount = parseFloat(this.elements['reg-amount'].value);
             const deposit = parseFloat(this.elements['deposit'].value);
+            const date = this.elements['date'].value;
+            
             if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
                 showMessage('Error', 'Please enter valid positive numbers for Registration Amount and Deposit.');
                 return;
             }
+            
+            if (!date) {
+                showMessage('Error', 'Please select a valid date.');
+                return;
+            }
+            
             const daysTicked = Math.floor(deposit / regAmount);
             if (daysTicked > 31) {
                 showMessage('Error', 'Initial deposit would result in more than 31 ticks. Please reduce the deposit amount.');
                 return;
             }
+            
             const tickDates = [];
-            const todayStr = getCurrentDateStr();
-            for (let i = 0; i < daysTicked; i++) tickDates[i] = todayStr;
+            const dateStr = convertToDisplayFormat(date);
+            for (let i = 0; i < daysTicked; i++) tickDates[i] = dateStr;
 
             const newContributor = {
                 name: this.elements['name'].value,
                 regNo: this.elements['reg-no'].value,
-                month: this.elements['month'].value,
+                date: dateStr,
                 regAmount,
                 deposit,
                 totalIncome: deposit,
@@ -1081,7 +1186,7 @@
 
         function filterContributors() {
             const searchTerm = searchBar.value.toLowerCase();
-            const selectedMonth = searchMonth.value;
+            const selectedDate = searchDate.value;
             let filteredContributors = allContributors;
 
             if (searchTerm) {
@@ -1091,9 +1196,10 @@
                 );
             }
 
-            if (selectedMonth) {
+            if (selectedDate) {
+                const displayDate = convertToDisplayFormat(selectedDate);
                 filteredContributors = filteredContributors.filter(contributor =>
-                    contributor.month.toLowerCase() === selectedMonth.toLowerCase()
+                    dateToComparable(contributor.date) === selectedDate
                 );
             }
 
@@ -1101,7 +1207,7 @@
         }
 
         searchBar.addEventListener('input', filterContributors);
-        searchMonth.addEventListener('change', filterContributors);
+        searchDate.addEventListener('change', filterContributors);
 
         window.onload = initializeFirebase;
     </script>
@@ -1171,21 +1277,7 @@
                 <!-- Search and Filter -->
                 <div class="controls-section mb-6">
                     <input type="text" id="search-bar" placeholder="🔍 Search by Name or Reg No..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
-                    <select id="search-month" class="border px-4 py-2 rounded-lg">
-                        <option value="">All Months</option>
-                        <option>January</option>
-                        <option>February</option>
-                        <option>March</option>
-                        <option>April</option>
-                        <option>May</option>
-                        <option>June</option>
-                        <option>July</option>
-                        <option>August</option>
-                        <option>September</option>
-                        <option>October</option>
-                        <option>November</option>
-                        <option>December</option>
-                    </select>
+                    <input type="date" id="search-date" class="border px-4 py-2 rounded-lg w-full mt-2" placeholder="Filter by date" />
                 </div>
 
                 <!-- Data Table -->
@@ -1195,7 +1287,7 @@
                             <tr id="table-header-row">
                                 <th>Name</th>
                                 <th>Reg No</th>
-                                <th>Month</th>
+                                <th>Date (dd/mm/yyyy)</th>
                                 <th>Book</th>
                                 <th>Reg Amt</th>
                                 <th>Deposit</th>
@@ -1227,24 +1319,10 @@
             <form id="edit-form" class="grid grid-cols-1 gap-4">
                 <input type="text" id="edit-name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
                 <input type="text" id="edit-reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
-                <select id="edit-month" required class="border px-4 py-2 rounded-lg">
-                    <option value="">Select Month</option>
-                    <option>January</option>
-                    <option>February</option>
-                    <option>March</option>
-                    <option>April</option>
-                    <option>May</option>
-                    <option>June</option>
-                    <option>July</option>
-                    <option>August</option>
-                    <option>September</option>
-                    <option>October</option>
-                    <option>November</option>
-                    <option>December</option>
-                </select>
+                <input type="date" id="edit-date" required class="border px-4 py-2 rounded-lg" />
                 <input type="number" id="edit-reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
                 <input type="number" id="edit-deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
-                <p class="text-xs text-gray-500 italic">💡 Ticks will automatically adjust based on the new deposit amount.</p>
+                <p class="text-xs text-gray-500 italic">💡 Ticks will automatically adjust based on the new deposit amount and date.</p>
                 <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Update Entry</button>
             </form>
         </div>
@@ -1264,21 +1342,7 @@
             <form id="contributor-form" class="grid grid-cols-1 gap-4">
                 <input type="text" id="name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
                 <input type="text" id="reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
-                <select id="month" required class="border px-4 py-2 rounded-lg">
-                    <option value="">Select Month</option>
-                    <option>January</option>
-                    <option>February</option>
-                    <option>March</option>
-                    <option>April</option>
-                    <option>May</option>
-                    <option>June</option>
-                    <option>July</option>
-                    <option>August</option>
-                    <option>September</option>
-                    <option>October</option>
-                    <option>November</option>
-                    <option>December</option>
-                </select>
+                <input type="date" id="date" required class="border px-4 py-2 rounded-lg" />
                 <input type="number" id="reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
                 <input type="number" id="deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
                 <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Add Entry</button>
