@@ -89,6 +89,7 @@
         let userEmail = "";
         let userBooks = [];
         let selectedBook = "";
+        let selectedMonth = "";
         let maxDayColumns = 0;
         let allContributors = [];
 
@@ -104,8 +105,8 @@
         const logoutBtn = document.getElementById('logout-btn');
         const showDailyIconsBtn = document.getElementById('show-daily-icons-btn');
         const showExpensesBtn = document.getElementById('show-expenses-btn');
-        const searchBar = document.getElementById('search-bar');
-        const searchDate = document.getElementById('search-date');
+        const searchMonth = document.getElementById('search-month');
+        const searchInput = document.getElementById('search-input');
         const customInputModal = document.getElementById('custom-input-modal');
         const customInputModalTitle = document.getElementById('custom-input-modal-title');
         const customInputModalInput = document.getElementById('custom-input-modal-input');
@@ -137,16 +138,13 @@
         function formatDateForInput(dateStr) {
             if (!dateStr) return '';
             try {
-                // Handle both dd/mm/yyyy and other formats
                 let parts;
                 if (dateStr.includes('/')) {
                     parts = dateStr.split('/');
                     if (parts.length === 3 && parts[2].length === 4) {
-                        // Already dd/mm/yyyy format
                         return `${parts[2]}-${parts[1]}-${parts[0]}`;
                     }
                 } else if (dateStr.includes('-')) {
-                    // yyyy-mm-dd format
                     const date = new Date(dateStr);
                     return date.toISOString().split('T')[0];
                 }
@@ -296,6 +294,7 @@
             customInputModalTitle.textContent = title;
             customInputModalInput.placeholder = placeholder;
             customInputModalInput.value = defaultAmount;
+            // FIX #2: KEEP dd/mm/yyyy FORMAT IN MODAL
             customInputModalDate.value = defaultDate || formatDateForInput(getCurrentDateStr());
             customInputModalReason.value = '';
             customInputModalBtn.textContent = buttonText;
@@ -431,8 +430,15 @@
                 
                 allContributors = Array.from(contributorsMap.values());
                 
+                // FIX #3: SORT BY REG NO NUMERICALLY
+                allContributors.sort((a, b) => {
+                    const regA = parseInt(a.regNo) || 0;
+                    const regB = parseInt(b.regNo) || 0;
+                    return regA - regB;
+                });
+                
                 console.log('Loaded contributors for book', selectedBook, ':', allContributors.length);
-                renderTable(allContributors);
+                filterContributors();
                 if (allContributors.length > 0) tableContainer.classList.remove('hidden');
                 else tableContainer.classList.add('hidden');
             }, (error) => {
@@ -497,19 +503,14 @@
 
             let top, left;
 
-            // Position horizontally - try to align right edge with button right edge
             left = Math.min(buttonRect.right - dropdownWidth, viewportWidth - dropdownWidth - 10);
             left = Math.max(left, 10);
 
-            // Position vertically - dropdown or dropup based on available space
             if (spaceBelow >= dropdownHeight + 10) {
-                // Dropdown mode (below the button)
                 top = buttonRect.bottom + 5;
             } else if (spaceAbove >= dropdownHeight + 10) {
-                // Dropup mode (above the button)
                 top = buttonRect.top - dropdownHeight - 5;
             } else {
-                // Not enough space either way, dropdown below by default
                 top = buttonRect.bottom + 5;
             }
 
@@ -518,7 +519,6 @@
         }
 
         function bindDropdownListeners() {
-            // Close all dropdowns when clicking outside
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown-btn') && !e.target.closest('.dropdown-menu')) {
                     document.querySelectorAll('.dropdown-menu').forEach(menu => {
@@ -527,24 +527,20 @@
                 }
             });
 
-            // Toggle dropdown on button click
             document.querySelectorAll('.dropdown-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const dropdownId = btn.getAttribute('data-toggle');
                     const dropdown = document.getElementById(dropdownId);
                     
-                    // Close all other dropdowns
                     document.querySelectorAll('.dropdown-menu').forEach(menu => {
                         if (menu.id !== dropdownId) {
                             menu.classList.add('hidden');
                         }
                     });
                     
-                    // Toggle current dropdown
                     if (dropdown.classList.contains('hidden')) {
                         dropdown.classList.remove('hidden');
-                        // Position the dropdown after showing it
                         setTimeout(() => {
                             positionDropdown(btn, dropdown);
                         }, 0);
@@ -554,7 +550,6 @@
                 });
             });
 
-            // Reposition dropdowns on window scroll/resize
             window.addEventListener('scroll', () => {
                 document.querySelectorAll('.dropdown-menu.show:not(.hidden)').forEach(menu => {
                     const btn = document.querySelector(`[data-toggle="${menu.id}"]`);
@@ -765,7 +760,6 @@
                     } else if (e.target.classList.contains('history-btn')) {
                         showHistoryModal(contributor.correctionHistory);
                     } else if (e.target.classList.contains('edit-btn')) {
-                        // EDIT FUNCTIONALITY
                         document.getElementById('edit-name').value = contributor.name;
                         document.getElementById('edit-reg-no').value = contributor.regNo;
                         document.getElementById('edit-date').value = formatDateForInput(dateToComparable(contributor.date || getCurrentDateStr()));
@@ -1185,29 +1179,32 @@
         });
 
         function filterContributors() {
-            const searchTerm = searchBar.value.toLowerCase();
-            const selectedDate = searchDate.value;
+            const selectedMonth = searchMonth.value;
+            const searchText = searchInput.value.toLowerCase().trim();
             let filteredContributors = allContributors;
 
-            if (searchTerm) {
-                filteredContributors = filteredContributors.filter(contributor =>
-                    contributor.name.toLowerCase().includes(searchTerm) ||
-                    contributor.regNo.toLowerCase().includes(searchTerm)
-                );
+            // Filter by month
+            if (selectedMonth) {
+                filteredContributors = filteredContributors.filter(contributor => {
+                    const contributorMonth = new Date(dateToComparable(contributor.date)).toLocaleString('en-US', { month: 'long' });
+                    return contributorMonth === selectedMonth;
+                });
             }
 
-            if (selectedDate) {
-                const displayDate = convertToDisplayFormat(selectedDate);
-                filteredContributors = filteredContributors.filter(contributor =>
-                    dateToComparable(contributor.date) === selectedDate
-                );
+            // Filter by name or reg no
+            if (searchText) {
+                filteredContributors = filteredContributors.filter(contributor => {
+                    const name = (contributor.name || '').toLowerCase();
+                    const regNo = (contributor.regNo || '').toLowerCase();
+                    return name.includes(searchText) || regNo.includes(searchText);
+                });
             }
 
             renderTable(filteredContributors);
         }
 
-        searchBar.addEventListener('input', filterContributors);
-        searchDate.addEventListener('change', filterContributors);
+        searchMonth.addEventListener('change', filterContributors);
+        searchInput.addEventListener('input', filterContributors);
 
         window.onload = initializeFirebase;
     </script>
@@ -1274,10 +1271,30 @@
 
             <!-- Table Container -->
             <div id="table-container" class="hidden">
-                <!-- Search and Filter -->
-                <div class="controls-section mb-6">
-                    <input type="text" id="search-bar" placeholder="🔍 Search by Name or Reg No..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
-                    <input type="date" id="search-date" class="border px-4 py-2 rounded-lg w-full mt-2" placeholder="Filter by date" />
+                <!-- SEARCH AND FILTER CONTROLS -->
+                <div class="controls-section mb-6 flex flex-wrap gap-4 justify-between items-end">
+                    <div class="form-group flex-1 min-w-[200px]">
+                        <label for="search-input">🔍 Search by Name or Reg No:</label>
+                        <input type="text" id="search-input" placeholder="Enter name or registration number..." class="w-full border px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                    </div>
+                    <div class="form-group flex-1 min-w-[200px]">
+                        <label for="search-month">📅 Filter by Month:</label>
+                        <select id="search-month" class="w-full border px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <option value="">All Months</option>
+                            <option>January</option>
+                            <option>February</option>
+                            <option>March</option>
+                            <option>April</option>
+                            <option>May</option>
+                            <option>June</option>
+                            <option>July</option>
+                            <option>August</option>
+                            <option>September</option>
+                            <option>October</option>
+                            <option>November</option>
+                            <option>December</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Data Table -->
@@ -1363,7 +1380,11 @@
             </div>
             <div class="flex flex-col gap-4">
                 <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
-                <input type="date" id="custom-input-modal-date" class="border px-4 py-2 rounded-lg" />
+                <!-- FIX #2: KEEP dd/mm/yyyy FORMAT WITH LABEL -->
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Date (dd/mm/yyyy):</label>
+                    <input type="date" id="custom-input-modal-date" class="w-full border px-4 py-2 rounded-lg" />
+                </div>
                 <input type="text" id="custom-input-modal-reason" placeholder="Reason for correction (optional)" class="border px-4 py-2 rounded-lg" />
                 <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
             </div>
