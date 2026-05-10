@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin || 6 MONTH  Contribution</title>
+    <title>Admin || 6 MONTH BOOK Contribution</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -242,6 +242,16 @@
             }
         }
 
+        // FIX: Extract month from date string
+        function getMonthFromDate(dateStr) {
+            try {
+                const date = new Date(dateToComparable(dateStr));
+                return date.toLocaleString('en-US', { month: 'long' });
+            } catch (e) {
+                return 'Unknown';
+            }
+        }
+
         function getUserInitials(name, email) {
             if (name) {
                 return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -292,7 +302,7 @@
                         userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
                         const isAdmin = userDocSnap.exists() && userDocSnap.data().role === "admin";
                         
-                        
+                    
                         
                         const initials = getUserInitials(userName, userEmail);
                         userNameDisplay.textContent = userName || 'Admin';
@@ -357,12 +367,16 @@
                         .sort((a, b) => new Date(dateToComparable(a.date)) - new Date(dateToComparable(b.date)))
                         .map(item => item.date);
 
+                    // FIX: Ensure month is always set
+                    const month = data.month || getMonthFromDate(data.date);
+
                     return {
                         id: docSnap.id,
                         userId: uid,
                         userName: displayName,
                         userBook: userBook,
-                        ...data
+                        ...data,
+                        month: month
                     };
                 };
 
@@ -421,14 +435,22 @@
             
             filteredContributors = allContributors.filter(contributor => {
                 const matchesSearch = query === '' ||
-                    contributor.name.toLowerCase().includes(query) ||
-                    contributor.regNo.toLowerCase().includes(query) ||
-                    contributor.userName.toLowerCase().includes(query);
+                    (contributor.name && contributor.name.toLowerCase().includes(query)) ||
+                    (contributor.regNo && contributor.regNo.toLowerCase().includes(query)) ||
+                    (contributor.userName && contributor.userName.toLowerCase().includes(query));
                 
                 const matchesBook = selectedBook === "All" || contributor.userBook === selectedBook;
-                const matchesMonth = selectedMonth === '' || contributor.month.toLowerCase() === selectedMonth.toLowerCase();
+                const matchesMonth = selectedMonth === '' || 
+                    (contributor.month && contributor.month.toLowerCase() === selectedMonth.toLowerCase());
                 
                 return matchesSearch && matchesBook && matchesMonth;
+            });
+            
+            // Sort by registration number (numeric sort, handles repeating numbers)
+            filteredContributors.sort((a, b) => {
+                const regNoA = parseInt(a.regNo, 10) || 0;
+                const regNoB = parseInt(b.regNo, 10) || 0;
+                return regNoA - regNoB;
             });
             
             renderActivityLog();
@@ -527,16 +549,17 @@
             }
             
             uniqueFiltered.forEach(contributor => {
-                const withdrawals = contributor.withdrawals;
-                const tickDates = contributor.tickDates;
+                const withdrawals = contributor.withdrawals || [];
+                const tickDates = contributor.tickDates || [];
                 const isLowDeposit = contributor.deposit < contributor.regAmount;
+                const month = contributor.month || 'Unknown';
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="border px-4 py-2">${contributor.name}</td>
                     <td class="border px-4 py-2">${contributor.userName}</td>
                     <td class="border px-4 py-2">${contributor.userBook}</td>
                     <td class="border px-4 py-2">${contributor.regNo}</td>
-                    <td class="border px-4 py-2">${contributor.month}</td>
+                    <td class="border px-4 py-2">${month}</td>
                     <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
                     <td class="border px-4 py-2">
                         <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
@@ -1026,7 +1049,7 @@
                     } else if (e.target.classList.contains('edit-btn')) {
                         document.getElementById('edit-name').value = contributor.name;
                         document.getElementById('edit-reg-no').value = contributor.regNo;
-                        document.getElementById('edit-month').value = contributor.month;
+                        document.getElementById('edit-month').value = contributor.month || 'January';
                         document.getElementById('edit-reg-amount').value = contributor.regAmount.toFixed(2);
                         document.getElementById('edit-deposit').value = contributor.deposit.toFixed(2);
                         editModal.classList.remove('hidden');
@@ -1192,7 +1215,7 @@
             <div class="logo-section">
                 <div class="logo-icon">📊</div>
                 <div class="logo-text">
-                    <h1>6 MONTHS  BOOK</h1>
+                    <h1>6 MONTH BOOK</h1>
                     <p>Admin Dashboard</p>
                 </div>
             </div>
