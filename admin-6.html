@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png">
+    <title>Admin || 6 months Contribution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <style>
+        /* Performance optimizations */
+        table {
+            table-layout: fixed;
+        }
+        tbody tr {
+            will-change: auto;
+        }
+        .virtualized-row {
+            contain: layout style paint;
+        }
+        .lazy-loader {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .lazy-loader.active {
+            display: block;
+        }
+        .dropdown-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 150px;
+            z-index: 100;
+        }
+        .dropdown-menu button {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            text-align: left;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .dropdown-menu button:hover {
+            background: #f0f0f0;
+        }
+        .dropdown-menu.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, getDoc, doc, updateDoc, deleteDoc, getDocs, addDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+            authDomain: "contribution-c5309.firebaseapp.com",
+            projectId: "contribution-c5309",
+            messagingSenderId: "800641687170",
+            appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+            measurementId: "G-DTJGZE3JEP"
+        };
+
+        // --- OPTIMIZED DATA STORE WITH LOCALSTORAGE ---
+        class OptimizedDataStore {
+            constructor() {
+                this.contributorsByBook = new Map();
+                this.unsubscribers = new Map();
+                this.isLoading = false;
+                this.loadedBooks = new Set();
+                this.CACHE_KEY_PREFIX = 'contributors_cache_';
+                this.CACHE_EXPIRY_KEY = 'contributors_cache_expiry_';
+                this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+            }
+
+            addContributor(book, userId, id, data) {
+                if (!this.contributorsByBook.has(book)) {
+                    this.contributorsByBook.set(book, new Map());
+                }
+                const key = `${userId}_${id}`;
+                this.contributorsByBook.get(book).set(key, data);
+            }
+
+            getByBook(book) {
+                return this.contributorsByBook.get(book) ? Array.from(this.contributorsByBook.get(book).values()) : [];
+            }
+
+            // Save to localStorage
+            saveToCache(book) {
+                try {
+                    const data = this.getByBook(book);
+                    localStorage.setItem(this.CACHE_KEY_PREFIX + book, JSON.stringify(data));
+                    localStorage.setItem(this.CACHE_EXPIRY_KEY + book, Date.now() + this.CACHE_DURATION);
+                } catch (e) {
+                    console.warn('Failed to save to cache:', e);
+                }
+            }
+
+            // Load from localStorage
+            loadFromCache(book) {
+                try {
+                    const expiry = localStorage.getItem(this.CACHE_EXPIRY_KEY + book);
+                    if (expiry && Date.now() < parseInt(expiry)) {
+                        const data = localStorage.getItem(this.CACHE_KEY_PREFIX + book);
+                        if (data) {
+                            const parsedData = JSON.parse(data);
+                            parsedData.forEach(contributor => {
+                                this.addContributor(book, contributor.userId, contributor.id, contributor);
+                            });
+                            return true;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to load from cache:', e);
+                }
+                return false;
+            }
+
+            clearCache(book) {
+                try {
+                    localStorage.removeItem(this.CACHE_KEY_PREFIX + book);
+                    localStorage.removeItem(this.CACHE_EXPIRY_KEY + book);
+                } catch (e) {
+                    console.warn('Failed to clear cache:', e);
+                }
+            }
+
+            cleanup() {
+                this.unsubscribers.forEach(unsub => unsub());
+                this.unsubscribers.clear();
+                this.contributorsByBook.clear();
+                this.loadedBooks.clear();
+            }
+        }
+
+        // --- Global Variables ---
+        const appId = "default-app-id";
+        let app, auth, db;
+        let userId = null;
+        let userName = "";
+        let userEmail = "";
+        const store = new OptimizedDataStore();
+        let selectedBook = "A";
+        let selectedMonth = "";
+        let maxDayColumns = 0;
+        
+        // Pagination variables
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 10;
+        let filteredContributors = [];
+        
+        // Modal state
+        let activeContributor = null;
+        let activeAction = null;
+
+        // --- DOM Elements ---
+        const loginContainer = document.getElementById('login-container');
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const userNameDisplay = document.getElementById('user-name-display');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userAvatarDisplay = document.getElementById('user-avatar-display');
+        const contributorTableBody = document.getElementById('contributor-table');
+        const tableContainer = document.getElementById('table-container');
+        const logoutBtn = document.getElementById('logout-btn');
+        const messageModal = document.getElementById('message-modal');
+        const messageModalText = document.getElementById('message-modal-text');
+        const messageModalTitle = document.getElementById('message-modal-title');
+        const searchInput = document.getElementById('search-input');
+        const searchMonth = document.getElementById('search-month');
+        const bookSelector = document.getElementById('book-selector');
+        const dailyIconsModal = document.getElementById('daily-icons-modal');
+        const dailyIconsModalText = document.getElementById('daily-icons-modal-text');
+        const expensesModal = document.getElementById('expenses-modal');
+        const expensesModalText = document.getElementById('expenses-modal-text');
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const actionModal = document.getElementById('action-modal');
+        const actionModalTitle = document.getElementById('action-modal-title');
+        const actionModalAmount = document.getElementById('action-modal-amount');
+        const actionModalBtn = document.getElementById('action-modal-btn');
+        const actionModalClose = document.getElementById('action-modal-close');
+
+        // --- Helper Functions ---
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}/${month}/${year}`;
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function dateToComparable(dateStr) {
+            try {
+                if (dateStr.includes('/')) {
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                    }
+                }
+                const date = new Date(dateStr);
+                return date.toISOString().split('T')[0];
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function getMonthFromDate(dateStr) {
+            try {
+                const date = new Date(dateToComparable(dateStr));
+                return date.toLocaleString('en-US', { month: 'long' });
+            } catch (e) {
+                return 'Unknown';
+            }
+        }
+
+        function getUserInitials(name, email) {
+            if (name) {
+                return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            } else if (email) {
+                return email[0].toUpperCase();
+            }
+            return '?';
+        }
+
+        function showMessage(title, text) {
+            messageModalTitle.textContent = title;
+            messageModalText.textContent = text;
+            messageModal.classList.remove('hidden');
+            setTimeout(() => {
+                messageModal.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showActionModal(title, action, contributor) {
+            activeContributor = contributor;
+            activeAction = action;
+            actionModalTitle.textContent = title;
+            actionModalAmount.value = action === 'edit' ? contributor.deposit.toFixed(2) : '';
+            actionModalAmount.placeholder = action === 'edit' ? 'Deposit amount' : 'Enter amount';
+            actionModalBtn.textContent = action === 'withdraw' ? 'Withdraw' : action === 'add' ? 'Add' : 'Update';
+            actionModalBtn.onclick = null;
+            actionModal.classList.remove('hidden');
+            
+            // Set focus
+            setTimeout(() => actionModalAmount.focus(), 100);
+        }
+
+        // --- HAMBURGER MENU FUNCTIONALITY ---
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hamburgerBtn.classList.toggle('active');
+            mobileMenu.classList.toggle('show');
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.hamburger-btn') && !e.target.closest('.mobile-menu')) {
+                hamburgerBtn.classList.remove('active');
+                mobileMenu.classList.remove('show');
+            }
+        });
+
+        // Close menu when clicking a menu item
+        document.querySelectorAll('.mobile-menu button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                hamburgerBtn.classList.remove('active');
+                mobileMenu.classList.remove('show');
+            });
+        });
+
+        // --- OPTIMIZED: Single listener per book with localStorage ---
+        async function setupOptimizedListeners() {
+            if (!userId) return;
+
+            store.cleanup();
+            store.isLoading = true;
+            updateLoadingState(true);
+
+            try {
+                const usersSnap = await getDocs(collection(db, "users"));
+                const userMap = new Map();
+
+                usersSnap.docs.forEach(userDoc => {
+                    userMap.set(userDoc.id, {
+                        name: userDoc.data().name || userDoc.data().email?.split('@')[0] || "Unknown",
+                        books: userDoc.data().books || []
+                    });
+                });
+
+                const booksSet = new Set();
+                userMap.forEach(userData => {
+                    userData.books.forEach(book => booksSet.add(book));
+                });
+
+                let booksProcessed = 0;
+                const totalBooks = booksSet.size;
+
+                booksSet.forEach(book => {
+                    // Try loading from cache first
+                    const cachedSuccessfully = store.loadFromCache(book);
+                    
+                    if (cachedSuccessfully) {
+                        booksProcessed++;
+                        updateProgressUI((booksProcessed / Math.max(totalBooks, 1)) * 100);
+                    }
+
+                    let bookTotalDocs = 0;
+                    
+                    usersSnap.docs.forEach(userDoc => {
+                        const uid = userDoc.id;
+                        const userData = userMap.get(uid);
+                        
+                        if (!userData.books.includes(book)) return;
+
+                        const colRef = collection(db, `artifacts/${appId}/users/${uid}/sixmonthcontributors`);
+                        
+                        const unsubscribe = onSnapshot(colRef, (snap) => {
+                            snap.docs.forEach(docSnap => {
+                                const docData = docSnap.data() || {};
+                                
+                                if (docData.book !== book) return;
+
+                                if (!Array.isArray(docData.tickDates)) docData.tickDates = [];
+                                if (!Array.isArray(docData.withdrawals)) docData.withdrawals = [];
+                                if (typeof docData.totalContributions !== 'number') {
+                                    docData.totalContributions = docData.deposit || 0;
+                                }
+
+                                docData.tickDates = docData.tickDates
+                                    .filter(d => d)
+                                    .map((date, index) => ({ date, index }))
+                                    .sort((a, b) => new Date(dateToComparable(a.date)) - new Date(dateToComparable(b.date)))
+                                    .map(item => item.date);
+
+                                const normalized = {
+                                    id: docSnap.id,
+                                    userId: uid,
+                                    userName: userData.name,
+                                    userBook: book,
+                                    ...docData,
+                                    month: docData.month || getMonthFromDate(docData.date)
+                                };
+
+                                store.addContributor(book, uid, docSnap.id, normalized);
+                                bookTotalDocs++;
+                            });
+
+                            booksProcessed++;
+                            const progress = (booksProcessed / Math.max(totalBooks, 1)) * 100;
+                            updateProgressUI(progress);
+                            updateLoadingText(`Loaded ${bookTotalDocs} records...`);
+
+                            if (booksProcessed === totalBooks) {
+                                store.isLoading = false;
+                                updateLoadingState(false);
+                                store.loadedBooks.add(book);
+                                // Save to cache
+                                store.saveToCache(book);
+                                filterAndRender();
+                                showMessage('Success', 'Data loaded successfully!');
+                            }
+                        }, error => {
+                            console.error(`Listener error for book ${book}:`, error);
+                        });
+
+                        if (!store.unsubscribers.has(book)) {
+                            store.unsubscribers.set(book, []);
+                        }
+                        store.unsubscribers.get(book).push(unsubscribe);
+                    });
+                });
+
+            } catch (err) {
+                console.error("Setup failed:", err);
+                showMessage('Error', `Failed to load: ${err.message}`);
+                store.isLoading = false;
+                updateLoadingState(false);
+            }
+        }
+
+        // --- FAST FILTERING ---
+        function filterAndRender() {
+            const searchQuery = searchInput.value.toLowerCase().trim();
+            const monthQuery = searchMonth.value;
+
+            let contributors = store.getByBook(selectedBook);
+
+            contributors = contributors.filter(contributor => {
+                const matchesSearch = !searchQuery ||
+                    (contributor.name && contributor.name.toLowerCase().includes(searchQuery)) ||
+                    (contributor.regNo && contributor.regNo.toLowerCase().includes(searchQuery)) ||
+                    (contributor.userName && contributor.userName.toLowerCase().includes(searchQuery));
+
+                const matchesMonth = !monthQuery || contributor.month === monthQuery;
+
+                return matchesSearch && matchesMonth;
+            });
+
+            contributors.sort((a, b) => (parseInt(a.regNo) || 0) - (parseInt(b.regNo) || 0));
+
+            // Reset pagination when filters change
+            filteredContributors = contributors;
+            currentPage = 1;
+            contributorTableBody.innerHTML = '';
+            
+            renderContributorTableLazy();
+
+            if (contributors.length > 0) {
+                tableContainer.classList.remove('hidden');
+            } else {
+                tableContainer.classList.add('hidden');
+            }
+        }
+
+        // --- LAZY RENDERING WITH PAGINATION ---
+        function renderContributorTableLazy() {
+            const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIdx = startIdx + ITEMS_PER_PAGE;
+            const contributorsToRender = filteredContributors.slice(startIdx, endIdx);
+
+            if (contributorsToRender.length === 0 && currentPage === 1) {
+                return; // No data to render
+            }
+
+            const allDaysTicked = filteredContributors.map(c => c.tickDates.length);
+            const newMaxDays = Math.min(31, Math.max(1, ...allDaysTicked, 0));
+
+            if (newMaxDays > maxDayColumns) {
+                maxDayColumns = newMaxDays;
+                updateHeaderDays(maxDayColumns);
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            contributorsToRender.forEach((contributor) => {
+                const row = document.createElement('tr');
+                row.className = 'virtualized-row hover:bg-gray-50 transition-colors';
+
+                const withdrawals = contributor.withdrawals || [];
+                const tickDates = contributor.tickDates || [];
+                const totalTicks = tickDates.length;
+                const isLowDeposit = contributor.deposit < contributor.regAmount;
+                const month = contributor.month || 'Unknown';
+
+                let html = `
+                    <td class="border px-4 py-2">${contributor.name}</td>
+                    <td class="border px-4 py-2">${contributor.userName}</td>
+                    <td class="border px-4 py-2">${contributor.userBook}</td>
+                    <td class="border px-4 py-2">${contributor.regNo}</td>
+                    <td class="border px-4 py-2">${month}</td>
+                    <td class="border px-4 py-2 reg-amt">₦${contributor.regAmount.toFixed(2)}</td>
+                    <td class="border px-4 py-2">
+                        <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${contributor.deposit.toFixed(2)}</div>
+                        ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
+                    </td>
+                `;
+
+                for (let i = 0; i < 4; i++) {
+                    const w = withdrawals[i];
+                    html += `<td class="border px-4 py-2 withdrawal-${i + 1}">
+                        ${w ? `
+                            ₦${w.amount.toFixed(2)}<br>
+                            <span class="text-xs text-gray-500">${w.date}</span>
+                            <button onclick="window.deleteWithdrawal('${contributor.id}', '${contributor.userId}', ${i})" 
+                                    class="ml-2 text-red-500 hover:text-red-700 text-xs inline-flex items-center justify-center w-5 h-5 rounded hover:bg-red-100">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : ''}
+                    </td>`;
+                }
+
+                html += `<td class="border px-4 py-2 text-center font-bold text-lg ${totalTicks > 0 ? 'text-green-600' : 'text-gray-400'}">
+                    ${totalTicks}
+                </td>`;
+
+                // Actions cell with dropdown
+                html += `<td class="border px-4 py-2 actions-cell" style="position: relative;">
+                    <div style="position: relative;">
+                        <button class="dropdown-btn bg-blue-600 text-white px-3 py-1 rounded text-sm" data-id="${contributor.id}" data-user-id="${contributor.userId}" title="Actions">
+                            <i class="fas fa-ellipsis-v"></i> Actions
+                        </button>
+                        <div class="dropdown-menu hidden" id="dropdown-${contributor.id}_${contributor.userId}" style="position: absolute; right: 0; top: 100%; margin-top: 5px; z-index: 50;">
+                            <button class="withdraw-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">
+                                <i class="fas fa-minus-circle"></i> Withdraw
+                            </button>
+                            <button class="add-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">
+                                <i class="fas fa-plus-circle"></i> Add
+                            </button>
+                            <button class="edit-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="delete-btn" data-id="${contributor.id}" data-user-id="${contributor.userId}">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </td>`;
+
+                for (let i = 0; i < maxDayColumns; i++) {
+                    const hasTick = tickDates[i] !== undefined;
+                    const dateText = typeof tickDates[i] === 'string' ? tickDates[i] : '';
+                    html += `<td class="border px-2 py-1 text-center">
+                        <input type="checkbox" disabled ${hasTick ? 'checked' : ''} />
+                        ${dateText ? `<div class="text-xs text-green-500">${dateText}</div>` : ''}
+                    </td>`;
+                }
+
+                row.innerHTML = html;
+                fragment.appendChild(row);
+            });
+
+            contributorTableBody.appendChild(fragment);
+
+            bindDropdownListeners();
+            bindButtonListeners();
+
+            // Show pagination controls
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredContributors.length / ITEMS_PER_PAGE);
+            let paginationHTML = `
+                <div class="flex justify-between items-center mt-4 px-4 py-3 bg-gray-100 rounded-lg">
+                    <div class="text-sm text-gray-600">
+                        Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1} to ${Math.min(currentPage * ITEMS_PER_PAGE, filteredContributors.length)} of ${filteredContributors.length} contributors
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="window.prevPage()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg text-sm font-semibold ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <span class="px-4 py-2 text-sm font-semibold">Page ${currentPage} of ${totalPages}</span>
+                        <button onclick="window.nextPage()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg text-sm font-semibold ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === totalPages ? 'disabled' : ''}>
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            let paginationDiv = document.getElementById('pagination-controls');
+            if (!paginationDiv) {
+                paginationDiv = document.createElement('div');
+                paginationDiv.id = 'pagination-controls';
+                tableContainer.appendChild(paginationDiv);
+            }
+            paginationDiv.innerHTML = paginationHTML;
+        }
+
+        window.prevPage = function() {
+            if (currentPage > 1) {
+                currentPage--;
+                contributorTableBody.innerHTML = '';
+                renderContributorTableLazy();
+            }
+        };
+
+        window.nextPage = function() {
+            const totalPages = Math.ceil(filteredContributors.length / ITEMS_PER_PAGE);
+            if (currentPage < totalPages) {
+                currentPage++;
+                contributorTableBody.innerHTML = '';
+                renderContributorTableLazy();
+            }
+        };
+
+        function updateHeaderDays(newMaxDays) {
+            const headerRow = document.getElementById('table-header-row');
+            headerRow.innerHTML = `
+                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                <th class="border px-4 py-2 min-w-[120px]">User</th>
+                <th class="border px-4 py-2 min-w-[80px]">Book</th>
+                <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
+                <th class="border px-4 py-2 min-w-[100px]">Month</th>
+                <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
+                <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
+                <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
+                <th class="border px-4 py-2 min-w-[100px] bg-yellow-100">Total Ticks</th>
+                <th class="border px-4 py-2 min-w-[100px]">Actions</th>
+            `;
+            
+            for (let i = 1; i <= newMaxDays; i++) {
+                const th = document.createElement('th');
+                th.className = "border px-2 py-1 text-center min-w-[50px] bg-green-100";
+                th.textContent = `Position ${i}`;
+                headerRow.appendChild(th);
+            }
+        }
+
+        // --- Update Contributor ---
+        async function updateContributor(id, data, contributorUserId) {
+            if (!userId) return;
+            try {
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${contributorUserId}/sixmonthcontributors`, id);
+                await updateDoc(contributorDocRef, data);
+                showMessage('Success', 'Contributor updated successfully!');
+                store.saveToCache(selectedBook); // Update cache
+            } catch (error) {
+                showMessage('Error', `Failed to update contributor: ${error.message}`);
+            }
+        }
+
+        async function deleteContributor(id, contributorUserId) {
+            if (!userId) return;
+            if (!confirm('Are you sure you want to delete this contributor?')) return;
+            try {
+                const contributorDocRef = doc(db, `artifacts/${appId}/users/${contributorUserId}/sixmonthcontributors`, id);
+                await deleteDoc(contributorDocRef);
+                showMessage('Success', 'Contributor deleted successfully!');
+                store.saveToCache(selectedBook); // Update cache
+            } catch (error) {
+                showMessage('Error', `Failed to delete contributor: ${error.message}`);
+            }
+        }
+
+        // --- EVENT BINDINGS ---
+        function bindDropdownListeners() {
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown-btn') && !e.target.closest('.dropdown-menu')) {
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        menu.classList.add('hidden');
+                    });
+                }
+            });
+
+            // Open/close dropdown
+            document.querySelectorAll('.dropdown-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const dropdownId = btn.getAttribute('data-id') + '_' + btn.getAttribute('data-user-id');
+                    const dropdown = document.getElementById('dropdown-' + dropdownId);
+                    
+                    // Close all other dropdowns
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        if (menu.id !== 'dropdown-' + dropdownId) {
+                            menu.classList.add('hidden');
+                        }
+                    });
+                    
+                    dropdown.classList.toggle('hidden');
+                });
+            });
+        }
+
+        function bindButtonListeners() {
+            document.querySelectorAll('.withdraw-btn, .add-btn, .edit-btn, .delete-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const btn = e.target.closest('button');
+                    const contributorId = btn.getAttribute('data-id');
+                    const contributorUserId = btn.getAttribute('data-user-id');
+                    
+                    const allContributors = store.getByBook(selectedBook);
+                    const contributor = allContributors.find(c => c.id === contributorId && c.userId === contributorUserId);
+                    if (!contributor) {
+                        showMessage('Error', 'Contributor not found.');
+                        return;
+                    }
+
+                    if (btn.classList.contains('withdraw-btn')) {
+                        showActionModal(`Withdraw from ${contributor.name}`, 'withdraw', contributor);
+                    } else if (btn.classList.contains('add-btn')) {
+                        showActionModal(`Add Income for ${contributor.name}`, 'add', contributor);
+                    } else if (btn.classList.contains('edit-btn')) {
+                        showActionModal(`Edit Deposit for ${contributor.name}`, 'edit', contributor);
+                    } else if (btn.classList.contains('delete-btn')) {
+                        await deleteContributor(contributorId, contributorUserId);
+                    }
+                });
+            });
+        }
+
+        // Action Modal Handler
+        actionModalBtn.addEventListener('click', async () => {
+            if (!activeContributor || !activeAction) return;
+
+            const amount = parseFloat(actionModalAmount.value);
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('Error', 'Please enter a valid positive number.');
+                return;
+            }
+
+            const contributor = activeContributor;
+            const action = activeAction;
+
+            try {
+                if (action === 'withdraw') {
+                    if (amount > contributor.deposit) {
+                        showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
+                        return;
+                    }
+                    
+                    const withdrawals = contributor.withdrawals || [];
+                    if (withdrawals.length >= 4) {
+                        showMessage('Error', 'Maximum of 4 withdrawals reached.');
+                        return;
+                    }
+                    
+                    const newDeposit = contributor.deposit - amount;
+                    const dateStr = formatDate(new Date());
+                    const newWithdrawals = [...withdrawals, { amount, date: dateStr }];
+                    
+                    await updateContributor(contributor.id, {
+                        deposit: newDeposit,
+                        withdrawals: newWithdrawals
+                    }, contributor.userId);
+
+                } else if (action === 'add') {
+                    const newDeposit = contributor.deposit + amount;
+                    const newTotalContributions = (contributor.totalContributions || contributor.deposit) + amount;
+                    const totalTicks = Math.floor(newTotalContributions / contributor.regAmount);
+                    
+                    if (totalTicks > 31) {
+                        showMessage('Error', 'Adding this amount would exceed the maximum of 31 ticks.');
+                        return;
+                    }
+                    
+                    await updateContributor(contributor.id, {
+                        deposit: newDeposit,
+                        totalContributions: newTotalContributions
+                    }, contributor.userId);
+
+                } else if (action === 'edit') {
+                    const deposit = amount;
+                    if (deposit < 0) {
+                        showMessage('Error', 'Deposit cannot be negative.');
+                        return;
+                    }
+                    
+                    await updateContributor(contributor.id, {
+                        deposit: deposit
+                    }, contributor.userId);
+                }
+
+                actionModal.classList.add('hidden');
+                activeContributor = null;
+                activeAction = null;
+                
+            } catch (error) {
+                showMessage('Error', error.message);
+            }
+        });
+
+        actionModalClose.addEventListener('click', () => {
+            actionModal.classList.add('hidden');
+            activeContributor = null;
+            activeAction = null;
+        });
+
+        // --- Show Daily Icons Modal (Income) ---
+        function showDailyIconsModal() {
+            const contributors = store.getByBook(selectedBook);
+            
+            if (contributors.length === 0) {
+                dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
+                dailyIconsModal.classList.remove('hidden');
+                return;
+            }
+
+            const allDeposits = contributors.flatMap(contributor => {
+                const transactions = [];
+                if (contributor.deposit > 0) {
+                    transactions.push({
+                        contributorName: `${contributor.name} (${contributor.userName})`,
+                        amount: contributor.deposit,
+                        date: contributor.tickDates[0] || formatDate(new Date()),
+                        type: 'Initial Deposit',
+                        book: contributor.userBook
+                    });
+                }
+                return transactions;
+            });
+
+            const depositsByDate = new Map();
+            allDeposits.forEach(dep => {
+                const dateStr = dep.date;
+                if (!depositsByDate.has(dateStr)) {
+                    depositsByDate.set(dateStr, []);
+                }
+                depositsByDate.get(dateStr).push(dep);
+            });
+
+            const sortedDates = Array.from(depositsByDate.keys()).sort((a, b) => new Date(dateToComparable(a)) - new Date(dateToComparable(b)));
+            
+            let html = `
+                <div class="py-3 px-4">
+                    <div class="flex justify-between mb-4 flex-wrap gap-2">
+                        <h4 class="font-bold text-lg text-gray-800">Daily Income Statement - Book ${selectedBook}</h4>
+                        <button onclick="window.downloadIncomeCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm"><i class="fas fa-download"></i> Download CSV</button>
+                    </div>
+                    ${sortedDates.length > 0 ? sortedDates.map(date => {
+                        const items = depositsByDate.get(date);
+                        const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
+                        return `
+                            <div class="mt-2 p-3 bg-green-50 border-l-4 border-green-500 rounded">
+                                <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
+                                <table class="w-full text-sm mt-2 border-collapse">
+                                    <thead class="bg-green-100">
+                                        <tr>
+                                            <th class="border px-2 py-1 text-left">Contributor</th>
+                                            <th class="border px-2 py-1 text-left">Book</th>
+                                            <th class="border px-2 py-1 text-right">Amount (₦)</th>
+                                            <th class="border px-2 py-1 text-left">Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${items.map(item => `
+                                            <tr class="border-b">
+                                                <td class="border px-2 py-1">${item.contributorName}</td>
+                                                <td class="border px-2 py-1">${item.book}</td>
+                                                <td class="border px-2 py-1 text-right font-semibold text-green-600">₦${item.amount.toFixed(2)}</td>
+                                                <td class="border px-2 py-1">${item.type}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                <p class="font-semibold mt-2 text-green-700">Daily Total: ₦${dailyTotal.toFixed(2)}</p>
+                            </div>
+                        `;
+                    }).join('') : '<p>No deposits recorded.</p>'}
+                </div>
+            `;
+
+            dailyIconsModalText.innerHTML = html;
+            dailyIconsModal.classList.remove('hidden');
+            window.currentIncomeData = allDeposits;
+        }
+
+        // --- Show Expenses Modal (Withdrawals) ---
+        function showExpensesModal() {
+            const contributors = store.getByBook(selectedBook);
+            
+            if (contributors.length === 0) {
+                expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
+                expensesModal.classList.remove('hidden');
+                return;
+            }
+
+            const allWithdrawals = contributors.flatMap(contributor => {
+                const transactions = [];
+                (contributor.withdrawals || []).forEach((w, index) => {
+                    transactions.push({
+                        contributorName: `${contributor.name} (${contributor.userName})`,
+                        amount: w.amount,
+                        date: w.date,
+                        type: `Withdrawal ${index + 1}`,
+                        book: contributor.userBook
+                    });
+                });
+                return transactions;
+            });
+
+            const withdrawalsByDate = new Map();
+            allWithdrawals.forEach(w => {
+                const dateStr = w.date;
+                if (!withdrawalsByDate.has(dateStr)) {
+                    withdrawalsByDate.set(dateStr, []);
+                }
+                withdrawalsByDate.get(dateStr).push(w);
+            });
+
+            const sortedDates = Array.from(withdrawalsByDate.keys()).sort((a, b) => new Date(dateToComparable(a)) - new Date(dateToComparable(b)));
+            
+            let html = `
+                <div class="py-3 px-4">
+                    <div class="flex justify-between mb-4 flex-wrap gap-2">
+                        <h4 class="font-bold text-lg text-gray-800">Daily Payout Statement - Book ${selectedBook}</h4>
+                        <button onclick="window.downloadPayoutCSV()" class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm"><i class="fas fa-download"></i> Download CSV</button>
+                    </div>
+                    ${sortedDates.length > 0 ? sortedDates.map(date => {
+                        const items = withdrawalsByDate.get(date);
+                        const dailyTotal = items.reduce((sum, item) => sum + item.amount, 0);
+                        return `
+                            <div class="mt-2 p-3 bg-orange-50 border-l-4 border-orange-500 rounded">
+                                <p class="text-lg font-semibold text-gray-800">📅 ${date}</p>
+                                <table class="w-full text-sm mt-2 border-collapse">
+                                    <thead class="bg-orange-100">
+                                        <tr>
+                                            <th class="border px-2 py-1 text-left">Contributor</th>
+                                            <th class="border px-2 py-1 text-left">Book</th>
+                                            <th class="border px-2 py-1 text-right">Amount (₦)</th>
+                                            <th class="border px-2 py-1 text-left">Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${items.map(item => `
+                                            <tr class="border-b">
+                                                <td class="border px-2 py-1">${item.contributorName}</td>
+                                                <td class="border px-2 py-1">${item.book}</td>
+                                                <td class="border px-2 py-1 text-right font-semibold text-red-600">-₦${item.amount.toFixed(2)}</td>
+                                                <td class="border px-2 py-1">${item.type}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                <p class="font-semibold mt-2 text-red-700">Daily Total: -₦${dailyTotal.toFixed(2)}</p>
+                            </div>
+                        `;
+                    }).join('') : '<p>No withdrawals recorded.</p>'}
+                </div>
+            `;
+
+            expensesModalText.innerHTML = html;
+            expensesModal.classList.remove('hidden');
+            window.currentPayoutData = allWithdrawals;
+        }
+
+        // --- UI Updates ---
+        function updateLoadingState(isLoading) {
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) spinner.style.display = isLoading ? 'block' : 'none';
+        }
+
+        function updateLoadingText(text) {
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText) loadingText.textContent = text;
+        }
+
+        function updateProgressUI(progress) {
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) progressBar.style.width = Math.min(progress, 100) + '%';
+        }
+
+        // --- Firebase Init ---
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userEmail = user.email || "";
+                        const userDocRef = doc(db, "users", userId);
+                        const userDocSnap = await getDoc(userDocRef);
+                        userName = userDocSnap.exists() ? userDocSnap.data().name || "" : "";
+
+                        const initials = getUserInitials(userName, userEmail);
+                        userNameDisplay.textContent = userName || 'Admin';
+                        userEmailDisplay.textContent = userEmail;
+                        userAvatarDisplay.textContent = initials;
+
+                        loginContainer.classList.add('hidden');
+                        dashboardContainer.classList.remove('hidden');
+                        
+                        setupOptimizedListeners();
+                    } else {
+                        loginContainer.classList.remove('hidden');
+                        dashboardContainer.classList.add('hidden');
+                    }
+                });
+            } catch (error) {
+                showMessage('Error', `Failed to initialize: ${error.message}`);
+            }
+        }
+
+        // --- Event Listeners ---
+        bookSelector.addEventListener('change', (e) => {
+            selectedBook = e.target.value;
+            maxDayColumns = 0;
+            currentPage = 1;
+            filterAndRender();
+        });
+
+        searchInput.addEventListener('input', filterAndRender);
+        searchMonth.addEventListener('change', filterAndRender);
+
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                logoutBtn.disabled = true;
+                logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+                store.cleanup();
+                await signOut(auth);
+                showMessage('Success', 'Logged out successfully!');
+            } catch (error) {
+                showMessage('Error', `Logout failed: ${error.message}`);
+            } finally {
+                logoutBtn.disabled = false;
+                logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+            }
+        });
+
+        document.getElementById('message-modal-close')?.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+        document.getElementById('daily-icons-modal-close')?.addEventListener('click', () => {
+            dailyIconsModal.classList.add('hidden');
+        });
+
+        document.getElementById('expenses-modal-close')?.addEventListener('click', () => {
+            expensesModal.classList.add('hidden');
+        });
+
+        // Global functions
+        window.deleteWithdrawal = async function(contributorId, contributorUserId, withdrawalIndex) {
+            const allContributors = store.getByBook(selectedBook);
+            const contributor = allContributors.find(c => c.id === contributorId && c.userId === contributorUserId);
+            if (!contributor) {
+                showMessage('Error', 'Contributor not found.');
+                return;
+            }
+
+            const withdrawals = [...(contributor.withdrawals || [])];
+            const withdrawalToDelete = withdrawals[withdrawalIndex];
+            if (!withdrawalToDelete) {
+                showMessage('Error', 'Withdrawal not found.');
+                return;
+            }
+
+            if (confirm(`Delete ₦${withdrawalToDelete.amount.toFixed(2)} withdrawal from ${withdrawalToDelete.date}?`)) {
+                const refundedAmount = withdrawalToDelete.amount;
+                const newDeposit = contributor.deposit + refundedAmount;
+                withdrawals.splice(withdrawalIndex, 1);
+
+                await updateContributor(contributorId, {
+                    deposit: newDeposit,
+                    withdrawals: withdrawals
+                }, contributorUserId);
+
+                showMessage('Success', 'Withdrawal deleted and refunded!');
+            }
+        };
+
+        window.showDailyIconsModal = showDailyIconsModal;
+        window.showExpensesModal = showExpensesModal;
+
+        window.downloadIncomeCSV = function() {
+            const data = window.currentIncomeData || [];
+            let csv = "Date,Contributor,Book,Amount,Type\n";
+            data.forEach(row => {
+                csv += `"${row.date}","${row.contributorName}","${row.book}",${row.amount},"${row.type}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `income_statement_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        };
+
+        window.downloadPayoutCSV = function() {
+            const data = window.currentPayoutData || [];
+            let csv = "Date,Contributor,Book,Amount,Type\n";
+            data.forEach(row => {
+                csv += `"${row.date}","${row.contributorName}","${row.book}",${row.amount},"${row.type}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `payout_statement_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+        };
+
+        window.onload = initializeFirebase;
+        window.store = store;
+    </script>
+
+    <!-- --- Professional Header --- -->
+    <header class="header">
+        <div class="header-content">
+            <!-- Logo Section -->
+            <div class="logo-section">
+                <div class="logo-icon">📊</div>
+                <div class="logo-text">
+                    <h1>ADMIN 6 MONTHS</h1>
+                    <p>Contributors</p>
+                </div>
+            </div>
+
+            <!-- User Section (Right side) -->
+            <div class="user-section">
+                <div class="avatar-circle" id="user-avatar-display">?</div>
+                <div class="user-info">
+                    <h3 id="user-name-display">Admin</h3>
+                    <p id="user-email-display">email@example.com</p>
+                </div>
+                <button id="logout-btn" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                <button class="hamburger-btn" id="hamburger-btn" title="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile/Dropdown Menu -->
+    <div class="mobile-menu" id="mobile-menu">
+        <button onclick="window.location.href = 'admin.html'" title="Go to Main Menu">
+            <i class="fas fa-home"></i> Main Menu
+        </button>
+        <button onclick="window.location.href = 'jan_history.html'" title="View History">
+            <i class="fas fa-history"></i> View History
+        </button>
+        <button onclick="window.showDailyIconsModal()" title="View Daily Incomes">
+            <i class="fas fa-money-bill"></i> Daily Incomes
+        </button>
+        <button onclick="window.showExpensesModal()" title="View Daily Payout">
+            <i class="fas fa-credit-card"></i> Daily Payout
+        </button>
+    </div>
+
+    <!-- --- Dashboard Container --- -->
+    <div id="dashboard-container" class="hidden w-full">
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Book Selector Dropdown -->
+            <div class="mb-4 bg-white rounded-lg p-4 shadow-md">
+                <label for="book-selector" class="block text-sm font-semibold text-gray-700 mb-2">Select Book/Alphabet:</label>
+                <select id="book-selector" class="border border-gray-300 px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-full md:w-48">
+                    <option value="A">📖 Book A</option>
+                    <option value="B">📖 Book B</option>
+                    <option value="C">📖 Book C</option>
+                    <option value="D">📖 Book D</option>
+                    <option value="E">📖 Book E</option>
+                    <option value="F">📖 Book F</option>
+                    <option value="G">📖 Book G</option>
+                    <option value="H">📖 Book H</option>
+                    <option value="I">📖 Book I</option>
+                    <option value="J">📖 Book J</option>
+                    <option value="K">📖 Book K</option>
+                    <option value="L">📖 Book L</option>
+                    <option value="M">📖 Book M</option>
+                    <option value="N">📖 Book N</option>
+                    <option value="O">📖 Book O</option>
+                    <option value="P">📖 Book P</option>
+                    <option value="Q">📖 Book Q</option>
+                    <option value="R">📖 Book R</option>
+                    <option value="S">📖 Book S</option>
+                    <option value="T">📖 Book T</option>
+                    <option value="U">📖 Book U</option>
+                    <option value="V">📖 Book V</option>
+                    <option value="W">📖 Book W</option>
+                    <option value="X">📖 Book X</option>
+                    <option value="Y">📖 Book Y</option>
+                    <option value="Z">📖 Book Z</option>
+                </select>
+            </div>
+
+            <div id="table-container" class="hidden">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Contributors List</h2>
+                <div class="flex space-x-4 mb-4 flex-wrap gap-2">
+                    <input id="search-input" type="text" placeholder="Search by Name, Reg No, or User" class="flex-1 min-w-[200px] border px-4 py-2 rounded-lg" />
+                    <select id="search-month" class="border px-4 py-2 rounded-lg">
+                        <option value="">All Months</option>
+                        <option>January</option>
+                        <option>February</option>
+                        <option>March</option>
+                        <option>April</option>
+                        <option>May</option>
+                        <option>June</option>
+                        <option>July</option>
+                        <option>August</option>
+                        <option>September</option>
+                        <option>October</option>
+                        <option>November</option>
+                        <option>December</option>
+                    </select>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div id="loading-spinner" class="hidden mb-4">
+                    <div class="bg-blue-100 p-4 rounded-lg">
+                        <p id="loading-text" class="mb-2">Loading contributors...</p>
+                        <div class="w-full bg-gray-300 rounded-full h-2">
+                            <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-lg shadow-md">
+                    <table class="w-full table-auto text-sm text-left text-gray-900 border border-gray-400">
+                        <thead class="bg-blue-200 text-gray-800 sticky top-0" id="table-head">
+                            <tr id="table-header-row">
+                                <th class="border px-4 py-2 min-w-[100px]">Name</th>
+                                <th class="border px-4 py-2 min-w-[120px]">User</th>
+                                <th class="border px-4 py-2 min-w-[80px]">Book</th>
+                                <th class="border px-4 py-2 min-w-[100px]">Reg No</th>
+                                <th class="border px-4 py-2 min-w-[100px]">Month</th>
+                                <th class="border px-4 py-2 min-w-[100px]">Reg Amt</th>
+                                <th class="border px-4 py-2 min-w-[140px]">Deposit</th>
+                                <th class="border px-4 py-2 min-w-[100px]">1st Withdrawal</th>
+                                <th class="border px-4 py-2 min-w-[100px]">2nd Withdrawal</th>
+                                <th class="border px-4 py-2 min-w-[100px]">3rd Withdrawal</th>
+                                <th class="border px-4 py-2 min-w-[100px]">4th Withdrawal</th>
+                                <th class="border px-4 py-2 min-w-[100px] bg-yellow-100">Total Ticks</th>
+                                <th class="border px-4 py-2 min-w-[100px]">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contributor-table" class="bg-white"></tbody>
+                    </table>
+                </div>
+                <div id="pagination-controls"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- --- Message Modal --- -->
+    <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
+                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="message-modal-text" class="text-gray-700"></p>
+        </div>
+    </div>
+
+    <!-- Action Modal (Withdraw/Add/Edit) -->
+    <div id="action-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="action-modal-title" class="text-xl font-bold text-gray-800">Action</h3>
+                <button id="action-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4">
+                <input type="number" id="action-modal-amount" placeholder="Enter amount" class="border px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" min="0.01" step="0.01" />
+                <button id="action-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Icons Modal (Income) -->
+    <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
+                <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="daily-icons-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <!-- Expenses Modal (Withdrawals) -->
+    <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 bg-black bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Payout</h3>
+                <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="expenses-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <!-- Login Container -->
+    <div id="login-container" class="w-full max-w-md mx-auto mt-20">
+        <div class="bg-white p-8 rounded-lg shadow-2xl">
+            <h2 class="text-2xl font-bold text-blue-600 mb-4 text-center">Admin Dashboard</h2>
+            <p class="text-gray-600 text-center mb-6">Please log in with your admin account to continue.</p>
+            <p class="text-center text-sm text-gray-700">
+                If you don't have an account, please go to the <a href="admin.html" class="text-blue-600 font-semibold hover:underline">Admin Login Page</a>.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

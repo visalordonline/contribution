@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="logo.png">
+    <title>Login - Prosperous Financial Services</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --navy:  #0b1f3a;
+            --navy2: #132d52;
+            --gold:  #c9a84c;
+            --gold2: #e8c96d;
+            --cream: #f7f4ef;
+            --white: #ffffff;
+            --muted: #7a8799;
+            --border:#e4e1db;
+            --danger:#c0392b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            background: var(--navy);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-band {
+            background: linear-gradient(135deg, var(--navy), var(--navy2));
+            padding: 48px 24px 80px;
+            text-align: center;
+            position: relative;
+        }
+        .top-band::after {
+            content: '';
+            position: absolute;
+            bottom: -2px; left: 0; right: 0;
+            height: 60px;
+            background: var(--cream);
+            border-radius: 32px 32px 0 0;
+        }
+        .logo-icon {
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px;
+            margin: 0 auto 16px;
+            box-shadow: 0 8px 24px rgba(201,168,76,.35);
+        }
+        .top-band h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            color: var(--white);
+        }
+        .top-band p {
+            font-size: 12px;
+            color: rgba(255,255,255,.5);
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .form-card {
+            background: var(--cream);
+            flex: 1;
+            padding: 32px 24px 40px;
+        }
+        .form-card h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: var(--navy);
+            margin-bottom: 6px;
+        }
+        .form-card .sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+        .field { margin-bottom: 18px; }
+        .field label { display: block; font-size: 12px; font-weight: 600; color: var(--navy); letter-spacing: .3px; margin-bottom: 7px; }
+
+        /* Phone row */
+        .phone-row { display: flex; gap: 8px; }
+        .phone-prefix {
+            display: flex; align-items: center;
+            padding: 0 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            background: var(--white);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--navy);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .phone-input-wrap { position: relative; flex: 1; }
+        .phone-input-wrap i {
+            position: absolute; left: 14px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted); font-size: 14px;
+        }
+        .phone-input-wrap input {
+            width: 100%;
+            padding: 14px 14px 14px 40px;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            background: var(--white);
+            color: var(--navy);
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .phone-input-wrap input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,168,76,.15);
+        }
+
+        .input-wrap { position: relative; }
+        .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; }
+        .input-wrap input {
+            width: 100%;
+            padding: 14px 14px 14px 40px;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            background: var(--white);
+            color: var(--navy);
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .input-wrap input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,168,76,.15);
+        }
+        .toggle-pw {
+            position: absolute;
+            right: 14px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            color: var(--muted); cursor: pointer; font-size: 14px;
+        }
+
+        .forgot-link {
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 22px;
+        }
+        .forgot-link a {
+            font-size: 12px;
+            color: var(--gold);
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .forgot-link a:hover { text-decoration: underline; }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--navy), var(--navy2));
+            color: var(--white);
+            border: none;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s, transform .15s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .login-btn:hover  { opacity: .9; }
+        .login-btn:active { transform: scale(.98); }
+        .login-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+        .divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 22px 0;
+            color: var(--muted); font-size: 12px;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1;
+            height: 1px; background: var(--border);
+        }
+
+        .signup-link {
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .signup-link a { color: var(--navy); font-weight: 700; text-decoration: none; }
+        .signup-link a:hover { text-decoration: underline; }
+
+        .error-box {
+            background: #fdecea;
+            border: 1px solid #f5c6c3;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--danger);
+            margin-bottom: 18px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+        .error-box.show { display: flex; }
+    </style>
+</head>
+<body>
+
+<div class="top-band">
+    <div class="logo-icon">💰</div>
+    <h1>Prosperous Financial</h1>
+    <p>Member Portal</p>
+</div>
+
+<div class="form-card">
+    <h2>Welcome back</h2>
+    <p class="sub">Sign in to view your contributions</p>
+
+    <div class="error-box" id="error-box">
+        <i class="fas fa-circle-exclamation"></i>
+        <span id="error-msg">Invalid credentials.</span>
+    </div>
+
+    <div class="field">
+        <label>Phone Number</label>
+        <div class="phone-row">
+            <div class="phone-prefix">🇳🇬 +234</div>
+            <div class="phone-input-wrap">
+                <i class="fas fa-phone"></i>
+                <input type="tel" id="login-phone" placeholder="08012345678" maxlength="11" autocomplete="tel">
+            </div>
+        </div>
+    </div>
+
+    <div class="field">
+        <label>Password</label>
+        <div class="input-wrap">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password">
+            <button class="toggle-pw" onclick="togglePw()" type="button" id="pw-eye">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="forgot-link">
+        <a href="#" onclick="forgotPassword(); return false;">Forgot password?</a>
+    </div>
+
+    <button class="login-btn" id="login-btn" onclick="doLogin()">
+        <i class="fas fa-arrow-right-to-bracket"></i> Sign In
+    </button>
+
+    <div class="divider">New here?</div>
+
+    <p class="signup-link">
+        Create a member account &rarr; <a href="user_singup.html">Register</a>
+    </p>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged }
+        from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+        authDomain: "contribution-c5309.firebaseapp.com",
+        projectId: "contribution-c5309",
+        messagingSenderId: "800641687170",
+        appId: "1:800641687170:web:36e0e50bdd8cf39844de9b"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Already logged in?
+    onAuthStateChanged(auth, (user) => {
+        if (user) window.location.href = 'user_page.html';
+    });
+
+    // Converts a phone input to the synthetic email used during registration
+    function phoneToEmail(raw) {
+        let digits = raw.replace(/\s+/g, '');
+        if (digits.startsWith('0')) digits = digits.slice(1); // strip leading 0
+        return digits + '@prosperous.local';
+    }
+
+    window.doLogin = async () => {
+        const phoneRaw = document.getElementById('login-phone').value.trim();
+        const password = document.getElementById('login-password').value;
+        const btn      = document.getElementById('login-btn');
+        const errBox   = document.getElementById('error-box');
+        const errMsg   = document.getElementById('error-msg');
+
+        errBox.classList.remove('show');
+
+        if (!phoneRaw || phoneRaw.length < 10) {
+            errMsg.textContent = 'Please enter a valid phone number.';
+            errBox.classList.add('show');
+            return;
+        }
+        if (!password) {
+            errMsg.textContent = 'Please enter your password.';
+            errBox.classList.add('show');
+            return;
+        }
+
+        const email = phoneToEmail(phoneRaw);
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in…';
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            window.location.href = 'user_page.html';
+        } catch (err) {
+            let msg = 'Login failed. Please try again.';
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                msg = 'Incorrect phone number or password.';
+            } else if (err.code === 'auth/too-many-requests') {
+                msg = 'Too many attempts. Try again later.';
+            }
+            errMsg.textContent = msg;
+            errBox.classList.add('show');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-arrow-right-to-bracket"></i> Sign In';
+        }
+    };
+
+    window.forgotPassword = async () => {
+        const phoneRaw = document.getElementById('login-phone').value.trim();
+        if (!phoneRaw || phoneRaw.length < 10) {
+            alert('Enter your registered phone number first.');
+            return;
+        }
+        // Password reset emails go to the synthetic address — not useful for phone-based users.
+        // Show a friendly message instead.
+        alert('To reset your password, please contact Prosperous Financial support with your phone number and NIN.');
+    };
+</script>
+
+<script>
+    function togglePw() {
+        const inp = document.getElementById('login-password');
+        const eye = document.querySelector('#pw-eye i');
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            eye.className = 'fas fa-eye-slash';
+        } else {
+            inp.type = 'password';
+            eye.className = 'fas fa-eye';
+        }
+    }
+    document.getElementById('login-password')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doLogin();
+    });
+</script>
+</body>
+</html>

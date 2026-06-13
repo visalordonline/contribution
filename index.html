@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Prosperous Financial Services - Structured Savings and Contribution Plans">
+  <meta name="theme-color" content="#FFD700">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Prosperous">
+  
+  <link rel="icon" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="manifest" href="manifest.json">
+  
+  <title>Prosperous Financial Services - Secure Contributions</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Modal Content */
+    .modal-content {
+      background: white;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-in-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      color: #000;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #555;
+    }
+
+    .modal-body h3 {
+      color: #333;
+      margin-top: 15px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .modal-body p {
+      margin: 8px 0;
+    }
+
+    .modal-body ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .modal-body li {
+      margin: 5px 0;
+    }
+
+    .modal-footer {
+      padding: 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-footer button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-decline {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-decline:hover {
+      background-color: #e0e0e0;
+    }
+
+    .btn-accept {
+      background-color: #FFD700;
+      color: #000;
+    }
+
+    .btn-accept:hover {
+      background-color: #FFC700;
+    }
+
+    /* Terms & Privacy Links in Footer */
+    .footer-bottom a {
+      color: #FFD700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .footer-bottom a:hover {
+      color: #FFC700;
+    }
+
+    /* Cookie Banner */
+    .cookie-banner {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #333;
+      color: white;
+      padding: 20px;
+      z-index: 999;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+      animation: slideUp 0.3s ease-in-out;
+    }
+
+    .cookie-banner.active {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .cookie-banner p {
+      margin: 0;
+      font-size: 14px;
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .cookie-banner button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .cookie-accept {
+      background-color: #FFD700;
+      color: #000;
+    }
+
+    .cookie-accept:hover {
+      background-color: #FFC700;
+    }
+
+    .cookie-decline {
+      background-color: #666;
+      color: white;
+    }
+
+    .cookie-decline:hover {
+      background-color: #555;
+    }
+
+    /* Trust Badges */
+    .trust-section {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: white;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .trust-section h2 {
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+
+    .trust-badges {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .badge {
+      background: rgba(255, 215, 0, 0.1);
+      border: 2px solid #FFD700;
+      padding: 20px;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .badge:hover {
+      background: rgba(255, 215, 0, 0.2);
+      transform: translateY(-5px);
+    }
+
+    .badge-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    .badge h3 {
+      margin: 10px 0 5px 0;
+      font-size: 16px;
+    }
+
+    .badge p {
+      margin: 0;
+      font-size: 12px;
+      color: #ddd;
+    }
+
+    /* Install Button Styles */
+    #install-btn {
+      background-color: #FFD700;
+      color: #000;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: none;
+      margin-left: 10px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #install-btn:hover:not(:disabled) {
+      background-color: #FFC700;
+      transform: scale(1.05);
+    }
+
+    #install-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 768px) {
+      #install-btn {
+        padding: 8px 15px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cookie Consent Banner -->
+<div class="cookie-banner" id="cookieBanner">
+  <p>
+    <i class="fas fa-cookie-bite"></i> We use cookies to enhance your experience and analyze site traffic. 
+    <a href="#" onclick="showCookiePolicy(); return false;" style="color: #FFD700; text-decoration: underline;">Learn more</a>
+  </p>
+  <button class="cookie-decline" onclick="declineCookies()">Decline</button>
+  <button class="cookie-accept" onclick="acceptCookies()">Accept All</button>
+</div>
+
+<!-- Policy & Terms Modal -->
+<div class="modal-overlay" id="policyModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Terms of Service</h2>
+      <button class="modal-close" onclick="closePolicyModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <!-- Content will be inserted here -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn-decline" onclick="closePolicyModal()">Close</button>
+      <button class="btn-accept" onclick="acceptPolicy()">I Agree</button>
+    </div>
+  </div>
+</div>
+
+<!-- Initial Consent Modal (shown on first visit) -->
+<div class="modal-overlay" id="consentModal">
+  <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-header">
+      <h2>Welcome to Prosperous Financial Services</h2>
+    </div>
+    <div class="modal-body">
+      <p><strong>🔒 SCUML Registered & Government Approved</strong></p>
+      <p>Before you continue, please review and accept our <strong>Terms of Service</strong> and <strong>Privacy Policy</strong>.</p>
+      <p style="color: #999; font-size: 13px;">We take your privacy and data security seriously. Please read our policies carefully.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-decline" onclick="declineConsent()" style="flex: 1;">Decline</button>
+      <button class="btn-accept" onclick="showTermsOfService()" style="flex: 1;">Accept & Continue</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="brand-container" style="display: flex; align-items: center; gap: 10px;">
+    <img style="width: 10rem;" src="logo.png" alt="Prosperous Logo">
+    
+    <!-- Install Button - Only visible on mobile and not installed -->
+    <button id="install-btn" title="Install app on your device">
+      <i class="fas fa-download"></i> Install
+    </button>
+  </div>
+
+  <nav>
+    <a href="#home" class="active">Home</a>
+    <a href="#contributions">Contributions</a>
+    <a href="#about">About</a>
+    <a href="#security">Security</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <div class="hamburger" id="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</header>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#home">Home</a>
+  <a href="#contributions">Contributions</a>
+  <a href="#about">About</a>
+  <a href="#security">Security</a>
+  <a href="#contact">Contact</a>
+</div>
+
+<section class="hero" id="home">
+  <div class="side-dots">
+    <span class="dot active"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="scroll-indicator">scroll</span>
+  </div>
+
+  <div class="hero-text-container">
+    <p class="hero-pretitle">
+      <span style="font-size: 30px; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #FFD700;">Prosperous Financial Services</span>
+      <br>A trusted community of financial growth
+    </p>
+    <h1 class="hero-title">Build Wealth Through Contributions</h1>
+    <p class="hero-subtitle">
+      Secure savings through structured contribution plans. Withdraw anytime, check your balance anywhere. Join thousands of members growing their wealth together.
+    </p>
+    <a href="user_app.html" class="btn-hero">Start Contributing Now</a>
+  </div>
+
+  <div class="hero-ink"></div>
+  <div class="particles">
+    <div class="particle p1"></div>
+    <div class="particle p2"></div>
+    <div class="particle p3"></div>
+    <div class="particle p4"></div>
+  </div>
+
+  <div class="hero-loan-info">
+    <p class="loan-type">Featured Plan</p>
+    <h3 class="loan-title">Flexible Contributions</h3>
+    <p class="loan-desc">Contribute according to your schedule. Withdraw anytime without penalties. Your money, your control.</p>
+    <a href="user_app.html" class="btn-loan-more">Get Started</a>
+  </div>
+
+  <div class="footer-loan-stats">
+    <div><span class="stat-label">Active Members</span><span class="stat-value">3k+</span></div>
+    <div><span class="stat-label">Total Contributions</span><span class="stat-value">100k+</span></div>
+    <div><span class="stat-label">Combined Wealth</span><span class="stat-value">$1M+</span></div>
+  </div>
+
+  <div class="side-icons">
+    <span class="icon">&#128269;</span>
+    <span class="icon">&#10148;</span>
+    <p class="vertical-text">explore</p>
+  </div>
+</section>
+
+<!-- ====================== CONTRIBUTION PLANS SECTION ====================== -->
+<section id="contributions" class="contribute-section">
+  <div class="contribute-container">
+    <h2>Our Contribution Plans</h2>
+    <p class="contribute-subtitle">Choose the plan that works best for your financial goals. Withdraw anytime, no penalties.</p>
+    
+    <button onclick="startContribution()" class="btn-start-contribution">
+      <i class="fas fa-plus-circle"></i> Start Contributing Now
+    </button>
+
+    <div class="contribution-plans" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 40px 0;">
+      
+      <!-- Daily Contribution -->
+      <div class="plan-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <div style="font-size: 40px; margin-bottom: 15px;">📅</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 22px;">Daily Contribution</h3>
+        <p style="margin: 10px 0; opacity: 0.9; font-size: 14px;">Flexible daily savings with complete control</p>
+        <ul style="margin: 15px 0; padding-left: 20px; font-size: 13px;">
+          <li>Contribute any amount daily</li>
+          <li>Withdraw anytime</li>
+          <li>No minimum amount required</li>
+          <li>Check balance 24/7 from any device</li>
+        </ul>
+        <a href="user_app.html" style="color: white; background: rgba(255,215,0,0.3); padding: 10px 15px; border-radius: 6px; text-decoration: none; display: inline-block; margin-top: 15px;">Get Started</a>
+      </div>
+
+      <!-- Mini Contribution -->
+      <div class="plan-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <div style="font-size: 40px; margin-bottom: 15px;">💰</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 22px;">Mini Contribution</h3>
+        <p style="margin: 10px 0; opacity: 0.9; font-size: 14px;">Quick savings with flexible duration</p>
+        <ul style="margin: 15px 0; padding-left: 20px; font-size: 13px;">
+          <li>Flexible contribution periods</li>
+          <li>Withdraw without penalties</li>
+          <li>Monitor progress online</li>
+          <li>Ideal for short-term goals</li>
+        </ul>
+        <a href="user_app.html" style="color: white; background: rgba(255,215,0,0.3); padding: 10px 15px; border-radius: 6px; text-decoration: none; display: inline-block; margin-top: 15px;">Get Started</a>
+      </div>
+
+      <!-- January Contribution -->
+      <div class="plan-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <div style="font-size: 40px; margin-bottom: 15px;">🎆</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 22px;">January Contribution</h3>
+        <p style="margin: 10px 0; opacity: 0.9; font-size: 14px;">Special 12-month plan for consistent growth</p>
+        <ul style="margin: 15px 0; padding-left: 20px; font-size: 13px;">
+          <li>12-month contribution cycle</li>
+          <li>Withdraw anytime without penalty</li>
+          <li>Track contributions anywhere</li>
+          <li>Build long-term wealth</li>
+        </ul>
+        <a href="user_app.html" style="color: white; background: rgba(255,215,0,0.3); padding: 10px 15px; border-radius: 6px; text-decoration: none; display: inline-block; margin-top: 15px;">Get Started</a>
+      </div>
+
+      <!-- 6-Month Contribution -->
+      <div class="plan-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+        <div style="font-size: 40px; margin-bottom: 15px;">⏰</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 22px;">6-Month Contribution</h3>
+        <p style="margin: 10px 0; opacity: 0.9; font-size: 14px;">Medium-term investment with flexibility</p>
+        <ul style="margin: 15px 0; padding-left: 20px; font-size: 13px;">
+          <li>6-month contribution plan</li>
+          <li>Full withdrawal flexibility</li>
+          <li>Real-time balance tracking</li>
+          <li>Perfect for mid-term goals</li>
+        </ul>
+        <a href="user_app.html" style="color: white; background: rgba(255,215,0,0.3); padding: 10px 15px; border-radius: 6px; text-decoration: none; display: inline-block; margin-top: 15px;">Get Started</a>
+      </div>
+    </div>
+
+    <div class="search-contribution" style="margin-top: 50px; padding-top: 30px; border-top: 1px solid #eee;">
+      <h3>Search Your Contributions</h3>
+      <p style="color: #666; margin-bottom: 15px;">Find and track any of your contributions from anywhere</p>
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Enter contribution name, ID or amount...">
+        <button onclick="searchContribution()" class="btn-search">
+          <i class="fas fa-search"></i> Search
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How Contributions Work -->
+<section class="how-it-works">
+  <h2>How Contributions Work</h2>
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-number">1</div>
+      <h3>Register</h3>
+      <p>Create your account and complete identity verification</p>
+    </div>
+    <div class="step">
+      <div class="step-number">2</div>
+      <h3>Choose Plan</h3>
+      <p>Select from Daily, Mini, January, or 6-Month plans</p>
+    </div>
+    <div class="step">
+      <div class="step-number">3</div>
+      <h3>Contribute</h3>
+      <p>Contribute any amount at your own pace</p>
+    </div>
+    <div class="step">
+      <div class="step-number">4</div>
+      <h3>Withdraw Anytime</h3>
+      <p>Withdraw your savings anytime without penalties or restrictions</p>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about">
+  <h2>About Prosperous Financial Services</h2>
+  <p>
+    Prosperous Financial Services is a trusted financial community dedicated to empowering members through structured contribution plans and collective wealth building. We provide transparent, secure, and accessible financial solutions that promote discipline, consistency, and sustainable growth.
+  </p>
+  <p style="margin-top: 20px;">
+    Our mission is to create a platform where every individual can contribute according to their means, build savings without pressure, and withdraw whenever needed. Your money remains yours with complete flexibility.
+  </p>
+</section>
+
+<section class="why">
+  <h2>Why Choose Prosperous?</h2>
+  <div class="why-grid">
+    <div class="card">
+      <h3>💎 Complete Flexibility</h3>
+      <p>Contribute any amount, anytime. Withdraw your savings immediately without penalties or restrictions.</p>
+    </div>
+    <div class="card">
+      <h3>📱 Check Balance Anywhere</h3>
+      <p>Access your contribution account 24/7 from any device. Track your savings in real-time from anywhere in the world.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Secure & Regulated</h3>
+      <p>Registered with SCUML and Government approved. Your funds are protected with industry-standard security.</p>
+    </div>
+    <div class="card">
+      <h3>🤝 Community Driven</h3>
+      <p>Join a trusted community of members working together to achieve financial goals and build collective wealth.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ Instant Withdrawals</h3>
+      <p>No waiting periods or approval processes. Withdraw your funds instantly whenever you need them.</p>
+    </div>
+    <div class="card">
+      <h3>📱 Mobile First</h3>
+      <p>Manage your contributions anytime, anywhere with our PWA app. Install and use offline.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Security & Compliance Section -->
+<section id="security" class="trust-section">
+  <h2 style="color: red;">🔒 Security & Compliance</h2>
+  <p style="margin-bottom: 30px; font-size: 16px;">We prioritize your security and operate with full transparency and regulatory compliance.</p>
+  
+  <div class="trust-badges">
+    <div class="badge">
+      <div class="badge-icon">📜</div>
+      <h3>SCUML Registered</h3>
+      <p>Officially registered with the Savings and Credit Union and Microfinance League</p>
+    </div>
+    <div class="badge">
+      <div class="badge-icon">✅</div>
+      <h3>Government Approved</h3>
+      <p>Licensed and approved by financial authorities for secure operations</p>
+    </div>
+    <div class="badge">
+      <div class="badge-icon">🔐</div>
+      <h3>Data Encryption</h3>
+      <p>Military-grade SSL encryption protects all your transactions and personal data</p>
+    </div>
+    <div class="badge">
+      <div class="badge-icon">🛡️</div>
+      <h3>Regular Audits</h3>
+      <p>Independent security audits ensure continuous protection and compliance</p>
+    </div>
+    <div class="badge">
+      <div class="badge-icon">👥</div>
+      <h3>Member Protection</h3>
+      <p>Member funds are held in secure accounts with transparency and accountability</p>
+    </div>
+    <div class="badge">
+      <div class="badge-icon">📊</div>
+      <h3>Full Transparency</h3>
+      <p>Complete visibility of all your contributions, balance, and transaction history</p>
+    </div>
+  </div>
+</section>
+
+<section class="testimony">
+  <h2>Member Testimonials</h2>
+  <blockquote>"I love the flexibility! I contribute daily and can check my balance from my phone anytime. No stress, just pure saving!"</blockquote>
+  <blockquote>"The ability to withdraw anytime gave me peace of mind. Prosperous Financial Services is truly transparent and reliable."</blockquote>
+  <blockquote>"Finally, a contribution platform where I have complete control over my money. Highly recommended!"</blockquote>
+</section>
+
+<footer id="contact">
+  <div class="footer-container">
+    <!-- Column 1: Company Info -->
+    <div class="footer-column">
+      <h3>Prosperous Financial Services</h3>
+      <p>A trusted community empowering members through structured contributions and collective wealth building.</p>
+      <div class="footer-social">
+        <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+        <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        <a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+      </div>
+    </div>
+
+    <!-- Column 2: Quick Links -->
+    <div class="footer-column">
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#contributions">Contribution Plans</a></li>
+        <li><a href="#about">About Us</a></li>
+        <li><a href="#security">Security</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </div>
+
+    <!-- Column 3: Contribution Plans -->
+    <div class="footer-column">
+      <h4>Contribution Plans</h4>
+      <ul>
+        <li><a href="user_app.html">Daily Contribution</a></li>
+        <li><a href="user_app.html">Mini Contribution</a></li>
+        <li><a href="user_app.html">January Contribution</a></li>
+        <li><a href="user_app.html">6-Month Contribution</a></li>
+        <li><a href="staff.html">Staff Portal</a></li>
+      </ul>
+    </div>
+
+    <!-- Column 4: Contact -->
+    <div class="footer-column">
+      <h4>Contact Us</h4>
+      <p><i class="fas fa-envelope"></i> support@prosperouscooperative.com</p>
+      <p><i class="fas fa-phone"></i> +234 808 955 8312</p>
+      <p><i class="fas fa-map-marker-alt"></i> Port Harcourt, Rivers State, Nigeria</p>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="footer-bottom">
+    <p>&copy; 2026 Prosperous Financial Services. All Rights Reserved. | SCUML Registered | Government Approved</p>
+    <p>
+      <a onclick="showTermsOfService(); return false;">Terms of Service</a> | 
+      <a onclick="showPrivacyPolicy(); return false;">Privacy Policy</a> |
+      <a onclick="showCookiePolicy(); return false;">Cookie Policy</a>
+    </p>
+  </div>
+</footer>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+  // ================= FIREBASE =================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+    authDomain: "contribution-c5309.firebaseapp.com",
+    projectId: "contribution-c5309",
+    messagingSenderId: "800641687170",
+    appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+    measurementId: "G-DTJGZE3JEP"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  let isUserLoggedIn = false;
+  let deferredPrompt = null;
+  let isInstallable = false;
+
+  const installBtn = document.getElementById("install-btn");
+
+  // ================= COOKIE MANAGEMENT =================
+  function initCookieBanner() {
+    const hasCookieConsent = localStorage.getItem("cookieConsent");
+    if (!hasCookieConsent) {
+      setTimeout(() => {
+        document.getElementById("cookieBanner").classList.add("active");
+      }, 1000);
+    }
+  }
+
+  window.acceptCookies = function() {
+    localStorage.setItem("cookieConsent", "accepted");
+    localStorage.setItem("cookieConsentDate", new Date().toISOString());
+    document.getElementById("cookieBanner").classList.remove("active");
+  };
+
+  window.declineCookies = function() {
+    localStorage.setItem("cookieConsent", "declined");
+    document.getElementById("cookieBanner").classList.remove("active");
+  };
+
+  // ================= POLICY & CONSENT MANAGEMENT =================
+  function checkAndShowConsent() {
+    const hasAcceptedPolicy = localStorage.getItem("acceptedPolicy");
+    if (!hasAcceptedPolicy) {
+      document.getElementById("consentModal").classList.add("active");
+    }
+  }
+
+  window.showTermsOfService = function() {
+    const content = `
+      <h3>1. Introduction</h3>
+      <p>Welcome to Prosperous Financial Services. These Terms of Service ("Terms") govern your use of our website, mobile application, and services. By accessing or using our services, you agree to be bound by these Terms.</p>
+
+      <h3>2. Services Description</h3>
+      <p>Prosperous Financial Services provides structured contribution plans where members can save at their own pace with complete flexibility to withdraw anytime without penalties.</p>
+
+      <h3>3. Contribution Plans</h3>
+      <p><strong>Daily Contribution:</strong> Members can contribute any amount daily with the flexibility to withdraw at any time.</p>
+      <p><strong>Mini Contribution:</strong> Short-term savings with flexible duration and anytime withdrawal option.</p>
+      <p><strong>January Contribution:</strong> 12-month contribution cycle with complete withdrawal flexibility.</p>
+      <p><strong>6-Month Contribution:</strong> Medium-term structured plan with anytime withdrawal access.</p>
+      <p style="color: #d32f2f; font-weight: bold;">⚠️ No penalties or restrictions on withdrawals regardless of plan type.</p>
+
+      <h3>4. Member Access Rights</h3>
+      <ul>
+        <li>Members can check their balance 24/7 from any device</li>
+        <li>Real-time tracking of all contributions</li>
+        <li>Access from anywhere in the world</li>
+        <li>Multiple platform access (web, mobile, PWA)</li>
+      </ul>
+
+      <h3>5. User Responsibilities</h3>
+      <ul>
+        <li>Provide accurate and truthful information during registration</li>
+        <li>Maintain the confidentiality of your account credentials</li>
+        <li>Comply with all applicable laws and regulations</li>
+        <li>Not engage in fraudulent or illegal activities</li>
+      </ul>
+
+      <h3>6. Contributions & Payments</h3>
+      <p>All contributions must be made through authorized channels. Members are responsible for ensuring payments are made according to their chosen contribution plan. Your contributions remain your property and can be accessed anytime.</p>
+
+      <h3>7. Withdrawals & Access</h3>
+      <p>Members can withdraw their contributions anytime without penalties, waiting periods, or approval restrictions. Withdrawal requests are processed securely and quickly.</p>
+
+      <h3>8. Privacy & Data Security</h3>
+      <p>Your personal and financial information is protected in accordance with our Privacy Policy. We implement industry-standard encryption and security measures. Our systems are SCUML registered and Government approved.</p>
+
+      <h3>9. Limitation of Liability</h3>
+      <p>Prosperous Financial Services is not liable for indirect, incidental, or consequential damages resulting from your use of our services.</p>
+
+      <h3>10. Dispute Resolution</h3>
+      <p>Any disputes shall be resolved through arbitration or in accordance with Nigerian financial regulations.</p>
+
+      <h3>11. Modifications</h3>
+      <p>We reserve the right to modify these Terms. Changes will be notified through our website or via email.</p>
+
+      <h3>12. Contact Information</h3>
+      <p>For questions, contact: support@prosperouscooperative.com or +234 808 955 8312</p>
+    `;
+
+    document.getElementById("modalTitle").textContent = "Terms of Service";
+    document.getElementById("modalBody").innerHTML = content;
+    document.getElementById("policyModal").classList.add("active");
+    document.getElementById("consentModal").classList.remove("active");
+  };
+
+  window.showPrivacyPolicy = function() {
+    const content = `
+      <h3>1. Information We Collect</h3>
+      <p>We collect personal information including:</p>
+      <ul>
+        <li>Name, email address, and phone number</li>
+        <li>Contribution and transaction history</li>
+        <li>Account activity and access logs</li>
+        <li>Device and browser information</li>
+        <li>Government ID and verification documents</li>
+      </ul>
+
+      <h3>2. How We Use Your Information</h3>
+      <p>Your information is used to:</p>
+      <ul>
+        <li>Provide contribution services and account access</li>
+        <li>Process contributions and withdrawals</li>
+        <li>Verify identity and prevent fraud</li>
+        <li>Send important updates and notifications</li>
+        <li>Comply with financial regulations and SCUML requirements</li>
+        <li>Maintain audit trails for transparency</li>
+      </ul>
+
+      <h3>3. Data Security</h3>
+      <p>We implement military-grade SSL encryption, secure servers, and access controls. All data is backed up regularly and protected against unauthorized access.</p>
+
+      <h3>4. Data Sharing</h3>
+      <p>We do not sell personal information. We may share data with:</p>
+      <ul>
+        <li>Payment processors for transaction handling</li>
+        <li>Financial regulatory bodies as required</li>
+        <li>Legal authorities when mandated by law</li>
+      </ul>
+
+      <h3>5. Access to Your Information</h3>
+      <p>You can check your contribution balance and account details 24/7 from anywhere. Your data is always accessible to you.</p>
+
+      <h3>6. Cookies & Tracking</h3>
+      <p>Our website uses cookies to enhance user experience. We use both essential cookies (for functionality) and analytics cookies (to understand usage patterns). You can control cookie settings through browser preferences.</p>
+
+      <h3>7. Your Rights</h3>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Access your personal information anytime</li>
+        <li>Correct inaccurate data</li>
+        <li>Request data deletion (after contribution terms)</li>
+        <li>Opt-out of marketing communications</li>
+      </ul>
+
+      <h3>8. Data Retention</h3>
+      <p>We retain contribution data for the duration of your membership plus 7 years for regulatory compliance. After account closure, data is securely deleted per regulations.</p>
+
+      <h3>9. Third-Party Links</h3>
+      <p>Our website may contain links to third-party sites. We are not responsible for their privacy practices.</p>
+
+      <h3>10. Changes to Policy</h3>
+      <p>We may update this Privacy Policy periodically. Continued use constitutes acceptance of changes.</p>
+
+      <h3>11. Contact Us</h3>
+      <p>For privacy concerns, contact: support@prosperouscooperative.com or +234 808 955 8312</p>
+    `;
+
+    document.getElementById("modalTitle").textContent = "Privacy Policy";
+    document.getElementById("modalBody").innerHTML = content;
+    document.getElementById("policyModal").classList.add("active");
+    document.getElementById("consentModal").classList.remove("active");
+  };
+
+  window.showCookiePolicy = function() {
+    const content = `
+      <h3>1. What Are Cookies?</h3>
+      <p>Cookies are small files stored on your device that help us remember your preferences and track website usage.</p>
+
+      <h3>2. Types of Cookies We Use</h3>
+      <p><strong>Essential Cookies:</strong> Required for website functionality (login, security)</p>
+      <p><strong>Performance Cookies:</strong> Help us understand how you use our website</p>
+      <p><strong>Analytics Cookies:</strong> Track user behavior to improve services</p>
+      <p><strong>Preference Cookies:</strong> Remember your settings and preferences</p>
+
+      <h3>3. Cookie Duration</h3>
+      <ul>
+        <li>Session Cookies: Deleted when you close your browser</li>
+        <li>Persistent Cookies: Remain for specific periods (up to 2 years)</li>
+      </ul>
+
+      <h3>4. Your Cookie Choices</h3>
+      <p>You can control cookies through:</p>
+      <ul>
+        <li>Browser settings and preferences</li>
+        <li>Our cookie consent banner</li>
+        <li>Do Not Track (DNT) features in your browser</li>
+      </ul>
+
+      <h3>5. Third-Party Cookies</h3>
+      <p>We use Firebase and Google Analytics which may set their own cookies. Please review their policies for details.</p>
+
+      <h3>6. Updates</h3>
+      <p>We may update this Cookie Policy. Continued use indicates acceptance of changes.</p>
+
+      <h3>7. Contact</h3>
+      <p>Questions about cookies? Contact: support@prosperouscooperative.com</p>
+    `;
+
+    document.getElementById("modalTitle").textContent = "Cookie Policy";
+    document.getElementById("modalBody").innerHTML = content;
+    document.getElementById("policyModal").classList.add("active");
+  };
+
+  window.closePolicyModal = function() {
+    document.getElementById("policyModal").classList.remove("active");
+  };
+
+  window.acceptPolicy = function() {
+    localStorage.setItem("acceptedPolicy", "true");
+    localStorage.setItem("acceptedPolicyDate", new Date().toISOString());
+    document.getElementById("policyModal").classList.remove("active");
+    alert("Thank you for accepting our Terms and Privacy Policy!");
+  };
+
+  window.declineConsent = function() {
+    alert("You must accept our Terms and Privacy Policy to continue using our services.");
+    document.getElementById("consentModal").classList.remove("active");
+  };
+
+  // ================= DETECT IF ON MOBILE =================
+  function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
+  // ================= CHECK IF APP INSTALLED =================
+  function isAppInstalled() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  // ================= UPDATE INSTALL BUTTON =================
+  function updateInstallButton() {
+    const isMobile = isMobileDevice();
+    const installed = isAppInstalled();
+
+    if (isMobile && !installed && isInstallable) {
+      // Show button only if mobile, not installed, and installable
+      installBtn.style.display = "inline-flex";
+      installBtn.disabled = false;
+      installBtn.innerHTML = '<i class="fas fa-download"></i> Install';
+    } else {
+      // Hide button if installed or not mobile or not installable
+      installBtn.style.display = "none";
+    }
+  }
+
+  // ================= CAPTURE INSTALL PROMPT =================
+  window.addEventListener("beforeinstallprompt", (e) => {
+    console.log("PWA Install Prompt Ready");
+    e.preventDefault();
+    deferredPrompt = e;
+    isInstallable = true;
+    updateInstallButton();
+  });
+
+  // ================= INSTALL BUTTON CLICK HANDLER =================
+  if (installBtn) {
+    installBtn.addEventListener("click", async () => {
+      if (!deferredPrompt) {
+        console.warn("Install prompt not available");
+        return;
+      }
+
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+
+        if (outcome === "accepted") {
+          console.log("App installation accepted");
+        }
+        deferredPrompt = null;
+        isInstallable = false;
+        updateInstallButton();
+      } catch (error) {
+        console.error("Installation error:", error);
+      }
+    });
+  }
+
+  // ================= APP INSTALLED EVENT =================
+  window.addEventListener("appinstalled", () => {
+    console.log("PWA Successfully Installed");
+    deferredPrompt = null;
+    isInstallable = false;
+    updateInstallButton();
+  });
+
+  // ================= AUTH STATE LISTENER =================
+  onAuthStateChanged(auth, (user) => {
+    isUserLoggedIn = !!user;
+  });
+
+  // ================= SERVICE WORKER REGISTRATION =================
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        const registration = await navigator.serviceWorker.register("./sw.js", {
+          scope: "/"
+        });
+        console.log("Service Worker Registered:", registration);
+      } catch (error) {
+        console.log("Service Worker Registration Failed:", error);
+      }
+    });
+  }
+
+  // ================= LOAD EVENT =================
+  window.addEventListener("load", () => {
+    updateInstallButton();
+    checkAndShowConsent();
+    initCookieBanner();
+  });
+
+  // ================= PERIODIC STATUS CHECK =================
+  setInterval(() => {
+    updateInstallButton();
+  }, 3000);
+
+  // ================= START CONTRIBUTION =================
+  window.startContribution = function () {
+    if (isUserLoggedIn) {
+      window.location.href = 'user_app.html';
+    } else {
+      alert("Please login first to start contributing.");
+      window.location.href = "user_app.html";
+    }
+  };
+
+  // ================= SEARCH CONTRIBUTION =================
+  window.searchContribution = function () {
+    const query = document.getElementById("search-input").value.trim();
+
+    if (query === "") {
+      alert("Please enter a search term (contribution name, ID or amount)");
+      return;
+    }
+
+    if (isUserLoggedIn) {
+      window.location.href = "user_app.html?search=" + encodeURIComponent(query);
+    } else {
+      alert("Please login to search your contributions.");
+      window.location.href = "user_app.html";
+    }
+  };
+
+  // ================= HAMBURGER MENU =================
+  const hamburger = document.getElementById("hamburger");
+  const mobileMenu = document.getElementById("mobile-menu");
+
+  if (hamburger) {
+    hamburger.addEventListener("click", () => {
+      hamburger.classList.toggle("active");
+      mobileMenu.classList.toggle("active");
+    });
+  }
+
+  document.querySelectorAll(".mobile-menu a").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (hamburger) hamburger.classList.remove("active");
+      mobileMenu.classList.remove("active");
+    });
+  });
+
+  // ================= SMOOTH SCROLL =================
+  document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+    anchor.addEventListener("click", function (e) {
+      const href = this.getAttribute("href");
+
+      if (href !== "#" && !href.includes("login")) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({
+            behavior: "smooth",
+          });
+        }
+      }
+    });
+  });
+
+</script>
+</body>
+</html>

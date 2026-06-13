@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="logo.png">
+    <title>My Contributions - Prosperous Financial Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+     <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+    <style>
+        :root {
+            --navy: #0b1f3a;
+            --gold: #c9a84c;
+        }
+        
+        /* Dark Mode Support */
+        body.dark-mode {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode header {
+            background-color: #1e293b !important;
+            border-bottom-color: #334155 !important;
+        }
+        
+        body.dark-mode .bg-white {
+            background-color: #1e293b !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode .text-gray-800,
+        body.dark-mode .text-gray-900 {
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode .text-gray-500,
+        body.dark-mode .text-gray-600,
+        body.dark-mode .text-gray-700 {
+            color: #cbd5e1 !important;
+        }
+        
+        body.dark-mode .border-gray-100,
+        body.dark-mode .border-gray-200,
+        body.dark-mode .border-gray-300,
+        body.dark-mode .border-gray-400 {
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode .bg-gray-50,
+        body.dark-mode .bg-gray-100 {
+            background-color: #0f172a !important;
+        }
+        
+        body.dark-mode input,
+        body.dark-mode select,
+        body.dark-mode textarea {
+            background-color: #1e293b !important;
+            color: #e2e8f0 !important;
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode input::placeholder,
+        body.dark-mode select::placeholder {
+            color: #64748b !important;
+        }
+        
+        body.dark-mode .dropdown-menu {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode .dropdown-menu button {
+            color: #cbd5e1 !important;
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode .dropdown-menu button:hover {
+            background-color: #0f172a !important;
+        }
+        
+        body.dark-mode .bottom-nav {
+            background-color: #1e293b !important;
+            border-top-color: #334155 !important;
+        }
+        
+        body.dark-mode .nav-link {
+            color: #94a3b8 !important;
+        }
+        
+        body.dark-mode .nav-link.active {
+            color: #c9a84c !important;
+        }
+        
+        body.dark-mode .section-header {
+            background: linear-gradient(135deg, #1e293b, #334155) !important;
+        }
+        
+        body.dark-mode .contrib-card {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode .tick-cell {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+            color: #64748b !important;
+        }
+        
+        body.dark-mode .tick-cell.filled {
+            background: #16a34a !important;
+            border-color: #16a34a !important;
+        }
+        
+        body.dark-mode .info-row {
+            border-bottom-color: #334155 !important;
+        }
+        
+        body.dark-mode .info-icon {
+            background-color: #334155 !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode .daily-total-box {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode .statement-table th {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode .statement-table td {
+            border-bottom-color: #334155 !important;
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-mode .shadow {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+        }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: white; border-top: 1px solid #e5e7eb;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.1); z-index: 50;
+        }
+        .nav-link {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 12px; text-decoration: none;
+            color: #6b7280; transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .nav-link:hover { color: #0b1f3a; }
+        .nav-link.active { color: #0b1f3a; border-bottom-color: #c9a84c; }
+        .nav-link i { font-size: 22px; margin-bottom: 4px; }
+        .nav-link span { font-size: 11px; font-weight: 600; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeUp .2s ease; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+        /* avatar */
+        .header-avatar {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 42px; height: 42px; border-radius: 12px; font-size: 18px;
+            font-weight: 700; background: linear-gradient(135deg, #0b1f3a, #132d52); color: white;
+        }
+
+        /* contribution cards */
+        .contrib-card {
+            background: white; border-radius: 16px; border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 12px rgba(0,0,0,.06); overflow: hidden; margin-bottom: 16px;
+        }
+        .contrib-card-header {
+            background: linear-gradient(135deg, #0b1f3a, #132d52);
+            padding: 16px 20px; color: white;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .tick-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 4px;
+            padding: 12px 16px;
+        }
+        .tick-cell {
+            width: 28px; height: 28px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; border: 1.5px solid #e5e7eb;
+        }
+        .tick-cell.filled { background: #dcfce7; border-color: #86efac; color: #166534; }
+        .tick-cell.empty  { background: #f9fafb; color: #d1d5db; }
+
+        /* profile info rows */
+        .info-row {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 0; border-bottom: 1px solid #f3f4f6;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-icon {
+            width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+            background: #f0f4ff; display: flex; align-items: center;
+            justify-content: center; color: #0b1f3a; font-size: 14px;
+        }
+        .info-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .4px; }
+        .info-value { font-size: 14px; color: #111827; font-weight: 500; margin-top: 2px; }
+
+        /* section header */
+        .section-header {
+            background: linear-gradient(135deg, #0b1f3a, #132d52);
+            padding: 20px; color: white; border-radius: 16px; margin-bottom: 16px;
+        }
+
+        /* stat chip */
+        .stat-chip {
+            background: rgba(255,255,255,.15); border-radius: 10px;
+            padding: 10px 14px; flex: 1; min-width: 0;
+        }
+
+        .btn-logout {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none;
+            cursor: pointer; transition: opacity .2s;
+        }
+        .btn-logout:hover { opacity: .9; }
+
+        .btn-edit {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none;
+            cursor: pointer; transition: opacity .2s;
+        }
+        .btn-edit:hover { opacity: .9; }
+
+        .theme-toggle {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border: none;
+            cursor: pointer; transition: opacity .2s;
+        }
+        .theme-toggle:hover { opacity: .9; }
+
+        /* loading skeleton */
+        .skeleton { background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);
+            background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 8px; height: 16px; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* badge */
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+            border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-green { background:#dcfce7; color:#166534; }
+        .badge-red   { background:#fee2e2; color:#991b1b; }
+        .badge-blue  { background:#dbeafe; color:#1e40af; }
+
+        /* Modal styles */
+        .modal-backdrop {
+            background: rgba(0,0,0,0.5);
+        }
+
+        /* Dropdown menu */
+        .dropdown-menu {
+            position: absolute; background: white; border: 1px solid #e5e7eb;
+            border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 100; min-width: 150px;
+        }
+        .dropdown-menu button {
+            display: block; width: 100%; text-align: left;
+            padding: 8px 12px; border: none; background: none;
+            cursor: pointer; font-size: 13px; color: #374151;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .dropdown-menu button:last-child { border-bottom: none; }
+        .dropdown-menu button:hover { background: #f9fafb; }
+
+        .dropdown-btn {
+            background: #3b82f6 !important; color: white !important;
+            font-size: 12px !important; padding: 4px 8px !important;
+            border-radius: 6px !important;
+        }
+
+        /* withdrawal item */
+        .withdrawal-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #fef2f2; padding: 8px; border-radius: 6px; font-size: 12px;
+        }
+        .withdrawal-info { flex: 1; }
+        .delete-withdrawal-btn {
+            background: #ef4444; color: white; border: none;
+            padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 11px;
+        }
+
+        /* Daily statement styles */
+        .daily-total-box {
+            background: white; border-radius: 10px; border: 1px solid #e5e7eb;
+            padding: 16px; margin-bottom: 16px;
+        }
+        .statement-table { width: 100%; border-collapse: collapse; }
+        .statement-table th { padding: 10px; text-align: left; font-size: 12px; font-weight: 600; }
+        .statement-table td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+        .statement-table tbody tr:last-child td { border-bottom: none; }
+        
+        /* Footer links */
+        .footer-link {
+            display: inline-block;
+            color: #0b1f3a;
+            text-decoration: none;
+            font-size: 12px;
+            transition: opacity 0.2s;
+        }
+        
+        body.dark-mode .footer-link {
+            color: #e2e8f0;
+        }
+        
+        .footer-link:hover {
+            opacity: 0.7;
+        }
+        
+        .footer-divider {
+            color: #d1d5db;
+            margin: 0 8px;
+        }
+        
+        body.dark-mode .footer-divider {
+            color: #475569;
+        }
+
+        /* Theme Toggle Switch */
+        .theme-switch {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px; background: #f3f4f6; border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        .switch {
+            position: relative; display: inline-block; width: 50px; height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background-color: white;
+            transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #0b1f3a; }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        body.dark-mode .theme-switch {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 pb-24">
+
+<script type="module">
+    
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+    getFirestore,
+    doc,
+    getDoc,
+    collection,
+    onSnapshot,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    getDocs,
+    query,
+    orderBy,
+    limit
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+        authDomain: "contribution-c5309.firebaseapp.com",
+        projectId: "contribution-c5309",
+        messagingSenderId: "800641687170",
+        appId: "1:800641687170:web:36e0e50bdd8cf39844de9b"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    const appId = "default-app-id";
+
+    let userId = null;
+    let userProfile = {};
+    let allContributions = [];
+    
+
+    // ── Local Storage Manager ────────────────────────────────────
+    const LocalStorageManager = {
+        KEYS: {
+            USER_PROFILE: 'app_user_profile',
+            CONTRIBUTIONS: 'app_contributions_',
+            CONTRIBUTIONS_TS: 'app_contributions_ts_',
+            THEME: 'app_theme_preference',
+            LAST_SYNC: 'app_last_sync',
+            USER_ID: 'app_user_id'
+        },
+        CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+        
+        setUserProfile(profile) {
+            localStorage.setItem(this.KEYS.USER_PROFILE, JSON.stringify(profile));
+            localStorage.setItem(this.KEYS.LAST_SYNC, Date.now().toString());
+            console.log('✅ User profile cached to localStorage');
+        },
+        
+        getUserProfile() {
+            const data = localStorage.getItem(this.KEYS.USER_PROFILE);
+            return data ? JSON.parse(data) : null;
+        },
+        
+        setContributions(contributions) {
+            localStorage.setItem(
+                this.KEYS.CONTRIBUTIONS + userId,
+                JSON.stringify(contributions)
+            );
+            localStorage.setItem(
+                this.KEYS.CONTRIBUTIONS_TS + userId,
+                Date.now().toString()
+            );
+            console.log('✅ Contributions cached to localStorage');
+        },
+        
+        getContributions() {
+            const data = localStorage.getItem(this.KEYS.CONTRIBUTIONS + userId);
+            return data ? JSON.parse(data) : null;
+        },
+        
+        isCacheValid() {
+            const ts = localStorage.getItem(this.KEYS.CONTRIBUTIONS_TS + userId);
+            if (!ts) return false;
+            return Date.now() - parseInt(ts) < this.CACHE_DURATION;
+        },
+        
+        clearContributionsCache() {
+            localStorage.removeItem(this.KEYS.CONTRIBUTIONS + userId);
+            localStorage.removeItem(this.KEYS.CONTRIBUTIONS_TS + userId);
+            console.log('✅ Contributions cache cleared');
+        },
+        
+        setTheme(isDark) {
+            localStorage.setItem(this.KEYS.THEME, isDark ? 'dark' : 'light');
+        },
+        
+        getTheme() {
+            return localStorage.getItem(this.KEYS.THEME) || 'light';
+        },
+        
+        setUserId(id) {
+            localStorage.setItem(this.KEYS.USER_ID, id);
+        },
+        
+        getUserId() {
+            return localStorage.getItem(this.KEYS.USER_ID);
+        },
+
+        // Clear all app data (for logout)
+        clearAll() {
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('app_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            console.log('✅ All app data cleared from localStorage');
+        }
+    };
+
+    // ── Dark Mode Toggle ────────────────────────────────────────────
+    const ThemeManager = {
+        init() {
+            const saved = LocalStorageManager.getTheme();
+            if (saved === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('theme-toggle-switch').checked = true;
+            }
+        },
+        toggle() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            LocalStorageManager.setTheme(isDark);
+            console.log(`✅ Theme switched to ${isDark ? 'dark' : 'light'} mode`);
+        }
+    };
+
+    // ── Cache Manager (Deprecated - using LocalStorageManager now) ────
+    const CacheManager = {
+        CACHE_KEYS: { CONTRIBUTIONS: 'contributions_' },
+        CACHE_DURATION: 5 * 60 * 1000,
+        setContributions(book, data) {
+            LocalStorageManager.setContributions(data);
+        },
+        getContributions(book) {
+            return LocalStorageManager.getContributions();
+        },
+        isCacheValid(book) {
+            return LocalStorageManager.isCacheValid();
+        },
+        clearCache(book) {
+            LocalStorageManager.clearContributionsCache();
+        }
+    };
+
+    // ── Helper Functions ───────────────────────────────────────────
+    function initials(name) {
+        if (!name) return 'PF';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+
+    function getCurrentDateStr() {
+        const d = new Date();
+        return d.toLocaleDateString('en-NG', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
+
+    function formatDateForInput(dateStr) {
+        if (!dateStr) return '';
+        try {
+            let parts;
+            if (dateStr.includes('/')) {
+                parts = dateStr.split('/');
+                if (parts.length === 3 && parts[2].length === 4) {
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+            } else if (dateStr.includes('-')) {
+                const date = new Date(dateStr);
+                return date.toISOString().split('T')[0];
+            }
+            const date = new Date(dateStr);
+            return date.toISOString().split('T')[0];
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function convertToDisplayFormat(isoDate) {
+        if (!isoDate) return '';
+        try {
+            const date = new Date(isoDate + 'T00:00:00Z');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const year = date.getUTCFullYear();
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            return isoDate;
+        }
+    }
+
+    function dateToComparable(dateStr) {
+        try {
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+            }
+            const date = new Date(dateStr);
+            return date.toISOString().split('T')[0];
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    function groupByDate(transactions) {
+        const grouped = {};
+        transactions.forEach(t => {
+            const comparable = dateToComparable(t.date);
+            if (!grouped[comparable]) {
+                grouped[comparable] = { date: t.date, items: [], total: 0 };
+            }
+            grouped[comparable].items.push(t);
+            grouped[comparable].total += t.amount;
+        });
+        return Object.values(grouped).sort((a, b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
+    }
+
+    // ── Tab switching ──────────────────────────────────────────────
+    window.switchTab = function(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(tab + '-tab').classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        document.querySelector(`a[data-tab="${tab}"]`).classList.add('active');
+    };
+
+    window.logoutUser = async () => {
+        if (confirm("Are you sure you want to logout?")) {
+            await signOut(auth);
+            LocalStorageManager.clearAll();
+            window.location.href = 'user_login.html';
+        }
+    };
+
+    window.toggleTheme = () => {
+        ThemeManager.toggle();
+    };
+
+    function showMessage(title, text) {
+        const modal = document.getElementById('message-modal');
+        document.getElementById('message-modal-title').textContent = title;
+        document.getElementById('message-modal-text').textContent = text;
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 3000);
+    }
+
+    function showConfirmationModal(title, text, onConfirm) {
+        const modal = document.getElementById('confirmation-modal');
+        document.getElementById('confirmation-modal-title').textContent = title;
+        document.getElementById('confirmation-modal-text').textContent = text;
+        modal.classList.remove('hidden');
+        
+        const handleYes = () => {
+            onConfirm();
+            modal.classList.add('hidden');
+            document.getElementById('confirmation-modal-yes').removeEventListener('click', handleYes);
+            document.getElementById('confirmation-modal-no').removeEventListener('click', handleNo);
+        };
+        const handleNo = () => {
+            modal.classList.add('hidden');
+            document.getElementById('confirmation-modal-yes').removeEventListener('click', handleYes);
+            document.getElementById('confirmation-modal-no').removeEventListener('click', handleNo);
+        };
+        document.getElementById('confirmation-modal-yes').addEventListener('click', handleYes);
+        document.getElementById('confirmation-modal-no').addEventListener('click', handleNo);
+    }
+
+    // ── Modal Controls ─────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize theme
+        ThemeManager.init();
+        document.getElementById('theme-toggle-switch').addEventListener('change', toggleTheme);
+
+        // Modal close buttons
+        document.getElementById('message-modal-close').addEventListener('click', () => {
+            document.getElementById('message-modal').classList.add('hidden');
+        });
+
+        document.getElementById('custom-input-modal-close').addEventListener('click', () => {
+            document.getElementById('custom-input-modal').classList.add('hidden');
+        });
+
+        document.getElementById('confirmation-modal-close').addEventListener('click', () => {
+            document.getElementById('confirmation-modal').classList.add('hidden');
+        });
+
+        document.getElementById('history-modal-close').addEventListener('click', () => {
+            document.getElementById('history-modal').classList.add('hidden');
+        });
+
+        document.getElementById('daily-icons-modal-close').addEventListener('click', () => {
+            document.getElementById('daily-icons-modal').classList.add('hidden');
+        });
+
+        document.getElementById('expenses-modal-close').addEventListener('click', () => {
+            document.getElementById('expenses-modal').classList.add('hidden');
+        });
+
+        document.getElementById('contributor-modal-close').addEventListener('click', () => {
+            document.getElementById('contributor-modal').classList.add('hidden');
+        });
+
+        document.getElementById('edit-profile-modal-close').addEventListener('click', () => {
+            document.getElementById('edit-profile-modal').classList.add('hidden');
+        });
+
+        // Backdrop clicks
+        document.getElementById('message-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('message-modal')) {
+                document.getElementById('message-modal').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('custom-input-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('custom-input-modal')) {
+                document.getElementById('custom-input-modal').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('confirmation-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('confirmation-modal')) {
+                document.getElementById('confirmation-modal').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('history-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('history-modal')) {
+                document.getElementById('history-modal').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('daily-icons-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('daily-icons-modal')) {
+                document.getElementById('daily-icons-modal').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('expenses-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('expenses-modal')) {
+                document.getElementById('expenses-modal').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('edit-profile-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('edit-profile-modal')) {
+                document.getElementById('edit-profile-modal').classList.add('hidden');
+            }
+        });
+
+        // Contributor form
+        document.getElementById('contributor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const regAmount = parseFloat(document.getElementById('reg-amount').value);
+            const deposit = parseFloat(document.getElementById('deposit').value);
+            const contributionType = document.getElementById('contribution-type').value;
+            const date = getCurrentDateStr();
+
+            if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
+                showMessage('Error', 'Please enter valid numbers.');
+                return;
+            }
+
+            const maxTicks = contributionType === 'daily' ? 31 : 180;
+            const daysTicked = Math.floor(deposit / regAmount);
+            if (daysTicked > maxTicks) {
+                showMessage('Error', `Deposit would result in more than ${maxTicks} ticks.`);
+                return;
+            }
+
+            const tickDates = [];
+            const dateStr = date;
+            for (let i = 0; i < daysTicked; i++) tickDates[i] = dateStr;
+
+            try {
+                const btn = document.querySelector('#contributor-form button');
+                btn.disabled = true;
+                btn.textContent = 'Adding...';
+
+                const ref = collection(db, `artifacts/${appId}/users/${userId}/usercontributions`);
+                const generatedRegNo = await generateRegNumber();
+
+                await addDoc(ref, {
+                   name: userProfile.name || document.getElementById('name').value,
+                    regNo: generatedRegNo,
+                    date: dateStr,
+                    regAmount,
+                    deposit,
+                    totalIncome: deposit,
+                    withdrawals: [],
+                    incomeHistory: [],
+                    tickDates,
+                    correctionHistory: [],
+                    contributionType: contributionType,
+                    book: 'JANUARY'
+                });
+
+                showMessage('Success', 'Contribution added successfully!');
+                document.getElementById('contributor-form').reset();
+                document.getElementById('contributor-modal').classList.add('hidden');
+                LocalStorageManager.clearContributionsCache();
+                loadContributions();
+            } catch (error) {
+                showMessage('Error', `Failed to add: ${error.message}`);
+            } finally {
+                const btn = document.querySelector('#contributor-form button');
+                btn.disabled = false;
+                btn.textContent = 'Add Entry';
+            }
+        });
+
+        // Edit profile form
+        document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newEmail = document.getElementById('edit-email').value;
+
+            if (!newEmail) {
+                showMessage('Error', 'Please enter an email address.');
+                return;
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+                showMessage('Error', 'Please enter a valid email address.');
+                return;
+            }
+
+            try {
+                const btn = document.querySelector('#edit-profile-form button');
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+
+                const ref = doc(db, "onlineuser", userId);
+                await updateDoc(ref, { email: newEmail });
+
+                userProfile.email = newEmail;
+                LocalStorageManager.setUserProfile(userProfile);
+                document.getElementById('profile-phone-sub').innerHTML = `${userProfile.phone || '—'} • ${newEmail}`;
+                
+                // Update info rows
+                const rows = document.querySelectorAll('#profile-info-rows .info-row');
+                rows.forEach(row => {
+                    const label = row.querySelector('.info-label');
+                    if (label && label.textContent === 'EMAIL') {
+                        const value = row.querySelector('.info-value');
+                        value.textContent = newEmail;
+                    }
+                });
+
+                showMessage('Success', 'Email updated successfully!');
+                document.getElementById('edit-profile-modal').classList.add('hidden');
+            } catch (error) {
+                showMessage('Error', `Failed to update: ${error.message}`);
+            } finally {
+                const btn = document.querySelector('#edit-profile-form button');
+                btn.disabled = false;
+                btn.textContent = 'Save Email';
+            }
+        });
+
+        // Nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchTab(link.getAttribute('data-tab'));
+            });
+        });
+    });
+
+    // ── Auth state & Profile Fetch from 'onlineuser' collection ────
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) { window.location.href = 'user_login.html'; return; }
+        userId = user.uid;
+        LocalStorageManager.setUserId(userId);
+
+        // ✅ Try loading from cache first
+        let cachedProfile = LocalStorageManager.getUserProfile();
+        if (cachedProfile) {
+            console.log('✅ Loading user profile from localStorage cache');
+            userProfile = cachedProfile;
+            renderProfileUI();
+        }
+
+        // ✅ Fetch user profile data from 'onlineuser' collection (and update cache)
+        try {
+            const snap = await getDoc(doc(db, "onlineuser", userId));
+            if (snap.exists()) {
+                userProfile = snap.data();
+                LocalStorageManager.setUserProfile(userProfile);
+                console.log('✅ User Profile Loaded from Firestore:', userProfile);
+                renderProfileUI();
+            } else {
+                console.warn('⚠️ No user profile found in onlineuser collection');
+                document.getElementById('user-name-display').textContent = 'User';
+            }
+        } catch (error) {
+            console.error('❌ Error fetching user profile:', error);
+        }
+        
+        // Load contributions
+        loadContributions();
+        
+        // Default to contributions tab
+        switchTab('contributions');
+    });
+
+    // ── Profile UI Rendering ─────────────────────────────────────
+    function renderProfileUI() {
+        const fullName = userProfile.name || 'Guest User';
+        const firstName = fullName.split(' ')[0] || 'Guest';
+        const phone = userProfile.phone || '—';
+
+        // ─── Update Header ───────────────────────────────────
+        document.getElementById('user-avatar').textContent = initials(fullName);
+        document.getElementById('user-name-display').textContent = firstName;
+        document.getElementById('user-phone-display').textContent = phone;
+
+        // ─── Render Full Profile ─────────────────────────────
+        renderProfile(userProfile);
+        console.log('✅ Profile UI rendered');
+    }
+
+    // ── Profile rendering with ALL user data ──────────────────────
+    function renderProfile(p) {
+        // Avatar and main info
+        document.getElementById('profile-avatar').textContent = initials(p.name || 'User');
+        document.getElementById('profile-fullname').textContent = p.name || '—';
+        document.getElementById('profile-phone-sub').innerHTML = `${p.phone || '—'} • <span class="text-blue-600">${p.email || '—'}</span>`;
+
+        // Format date of birth
+        const dobDisplay = p.dateOfBirth 
+            ? new Date(p.dateOfBirth).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })
+            : '—';
+
+        // Build comprehensive info rows with ALL user data
+        const rows = [
+            { icon: 'fa-phone',        label: 'Phone Number',     value: p.phone || '—' },
+            { icon: 'fa-envelope',     label: 'Email',            value: p.email || '—' },
+            { icon: 'fa-calendar',     label: 'Date of Birth',    value: dobDisplay },
+            { icon: 'fa-id-card',      label: 'NIN',              value: p.nin || '—' },
+            { icon: 'fa-heart',        label: 'Marital Status',   value: p.maritalStatus || '—' },
+            { icon: 'fa-briefcase',    label: 'Occupation',       value: p.occupation || '—' },
+            { icon: 'fa-map-marker-alt', label: 'State',          value: p.state || '—' },
+            { icon: 'fa-map-pin',      label: 'LGA',              value: p.lga || '—' },
+            { icon: 'fa-home',         label: 'Address',          value: p.address || '—' },
+            { icon: 'fa-university',   label: 'Bank',             value: p.bank || '—' },
+            { icon: 'fa-credit-card',  label: 'Account Name',     value: p.accountName || '—' },
+            { icon: 'fa-hashtag',      label: 'Account Number',   value: p.accountNumber || '—' },
+            { icon: 'fa-clock',        label: 'Member Since',     value: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' }) : '—' },
+        ];
+
+        document.getElementById('profile-info-rows').innerHTML = rows.map(r => `
+            <div class="info-row">
+                <div class="info-icon"><i class="fas ${r.icon}"></i></div>
+                <div>
+                    <div class="info-label">${r.label}</div>
+                    <div class="info-value">${r.value}</div>
+                </div>
+            </div>
+        `).join('');
+
+        console.log('✅ Profile info rows rendered');
+    }
+
+    window.openEditProfileModal = function() {
+        document.getElementById('edit-email').value = userProfile.email || '';
+        document.getElementById('edit-profile-modal').classList.remove('hidden');
+    };
+
+    // ── Contributions loading ──────────────────────────────────────
+    function loadContributions() {
+        const container = document.getElementById('contrib-list');
+        
+        // Try loading from cache first
+        if (LocalStorageManager.isCacheValid()) {
+            const cachedContributions = LocalStorageManager.getContributions();
+            if (cachedContributions) {
+                console.log('✅ Loading contributions from localStorage cache');
+                allContributions = cachedContributions;
+                renderContributions(allContributions);
+                // Still sync in background
+                syncContributionsFromFirebase();
+                return;
+            }
+        }
+
+        // Show loading state
+        container.innerHTML = `<div class="space-y-2 p-4">
+            <div class="skeleton w-full" style="height:80px"></div>
+            <div class="skeleton w-3/4" style="height:60px"></div>
+        </div>`;
+
+        syncContributionsFromFirebase();
+    }
+
+    function syncContributionsFromFirebase() {
+        const ref = collection(db, `artifacts/${appId}/users/${userId}/usercontributions`);
+        
+        onSnapshot(ref, (snap) => {
+            allContributions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            // Sort by registration number
+            allContributions.sort((a, b) => {
+                const regA = parseInt(a.regNo) || 0;
+                const regB = parseInt(b.regNo) || 0;
+                return regA - regB;
+            });
+
+            LocalStorageManager.setContributions(allContributions);
+            renderContributions(allContributions);
+        }, (error) => {
+            console.error('Firestore sync error:', error);
+            // If offline, load from cache
+            const cached = LocalStorageManager.getContributions();
+            if (cached) {
+                console.log('⚠️ Using cached data (offline mode)');
+                allContributions = cached;
+                renderContributions(allContributions);
+            } else {
+                renderContributions([]);
+            }
+        });
+    }
+
+    function renderContributions(records) {
+        const container = document.getElementById('contrib-list');
+        const totalDeposit = records.reduce((s, r) => s + (r.deposit || 0), 0);
+        const totalTicks   = records.reduce((s, r) => s + (r.tickDates?.length || 0), 0);
+
+        document.getElementById('stat-books').textContent  = records.length;
+        document.getElementById('stat-ticks').textContent  = totalTicks;
+        document.getElementById('stat-total').textContent  = '₦' + totalDeposit.toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        if (records.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-16 text-gray-400">
+                    <i class="fas fa-wallet text-5xl mb-4 opacity-30"></i>
+                    <p class="font-semibold">No contribution records yet</p>
+                    <p class="text-sm mt-1">Add your first contribution to get started</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = records.map(r => {
+            const ticks = r.tickDates?.length || 0;
+            const maxTicks = r.contributionType === '6-month' ? 180 : 31;
+            const pct = Math.round((ticks / maxTicks) * 100);
+            const withdrawals = r.withdrawals || [];
+            const totalWithdrawn = withdrawals.reduce((s, w) => s + (w.amount || 0), 0);
+            const isComplete = ticks >= maxTicks;
+            const typeLabel = r.contributionType === '6-month' ? '6-Month Plan' : 'Daily Plan';
+
+            const tickCells = Array.from({ length: Math.min(31, maxTicks) }, (_, i) => {
+                const filled = i < ticks;
+                return `<div class="tick-cell ${filled ? 'filled' : 'empty'}" title="${filled ? (r.tickDates[i] || '') : 'Not paid'}">${filled ? '✓' : ''}</div>`;
+            }).join('');
+
+            return `
+            <div class="contrib-card">
+                <div class="contrib-card-header">
+                    <div>
+                        <div class="text-xs opacity-60 uppercase tracking-wider mb-1">Registration</div>
+                        <div class="font-bold text-lg">#${r.regNo || '—'}</div>
+                        <div class="text-xs opacity-70 mt-1">Joined: ${r.date || '—'} • ${typeLabel}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="badge ${isComplete ? 'badge-green' : 'badge-blue'}" style="background:${isComplete?'rgba(134,239,172,.25)':'rgba(147,197,253,.25)'};color:white">
+                            <i class="fas ${isComplete ? 'fa-check-circle' : 'fa-clock'}"></i>
+                            ${isComplete ? 'Complete' : ticks + '/' + maxTicks}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="px-4 pt-3 pb-1">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Progress</span><span>${pct}%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                        <div class="h-2 rounded-full transition-all" style="width:${pct}%;background:linear-gradient(90deg,#0b1f3a,#c9a84c)"></div>
+                    </div>
+                </div>
+
+                <div class="tick-grid">${tickCells}</div>
+
+                <div class="px-4 pb-4">
+                    <div class="grid grid-cols-3 gap-2 bg-gray-50 rounded-xl p-3">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-400">Daily Rate</div>
+                            <div class="font-bold text-sm text-gray-800">₦${(r.regAmount||0).toLocaleString('en-NG', {minimumFractionDigits:2})}</div>
+                        </div>
+                        <div class="text-center border-x border-gray-200">
+                            <div class="text-xs text-gray-400">Total Paid</div>
+                            <div class="font-bold text-sm text-green-700">₦${(r.deposit||0).toLocaleString('en-NG', {minimumFractionDigits:2})}</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xs text-gray-400">Withdrawn</div>
+                            <div class="font-bold text-sm text-red-600">-₦${totalWithdrawn.toLocaleString('en-NG', {minimumFractionDigits:2})}</div>
+                        </div>
+                    </div>
+
+                    ${withdrawals.length > 0 ? `
+                    <div class="mt-3">
+                        <div class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Withdrawal History</div>
+                        ${withdrawals.map(w => `
+                            <div class="flex justify-between items-center text-sm py-1.5 border-b border-gray-100 last:border-0">
+                                <div class="text-gray-600">${w.date || '—'} · ${w.reason || '—'}</div>
+                                <div class="font-semibold text-red-600">-₦${(w.amount||0).toLocaleString('en-NG', {minimumFractionDigits:2})}</div>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
+
+                    <div class="mt-3 flex gap-2">
+                        <button onclick="window.addIncome('${r.id}')" class="flex-1 bg-green-600 text-white text-xs py-2 rounded-lg hover:bg-green-700">+ Add Income</button>
+                        <button onclick="window.addWithdrawal('${r.id}')" class="flex-1 bg-orange-600 text-white text-xs py-2 rounded-lg hover:bg-orange-700">- Withdraw</button>
+                        <button onclick="window.viewHistory('${r.id}')" class="flex-1 bg-blue-600 text-white text-xs py-2 rounded-lg hover:bg-blue-700">📋 History</button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        bindActionListeners();
+    }
+
+    // ── Action handlers ────────────────────────────────────────────
+    window.addIncome = function(contributorId) {
+        const contributor = allContributions.find(c => c.id === contributorId);
+        if (!contributor) return;
+
+        const modal = document.getElementById('custom-input-modal');
+        document.getElementById('custom-input-modal-title').textContent = '+ Add Income';
+        document.getElementById('custom-input-modal-input').placeholder = 'Enter amount to add';
+        document.getElementById('custom-input-modal-input').value = '';
+        
+        // Show current date (read-only or just display)
+        const today = getCurrentDateStr();
+        document.getElementById('custom-input-modal-date').style.display = 'none';
+        document.getElementById('custom-input-modal-reason').innerHTML = `
+            <div class="text-sm text-gray-600 mb-2">
+                <strong>Date:</strong> ${today}
+            </div>
+            <input type="text" id="reason-input" placeholder="Reason (optional)" class="border px-4 py-2 rounded-lg w-full" />
+        `;
+        document.getElementById('custom-input-modal-btn').textContent = 'Add';
+        modal.classList.remove('hidden');
+
+        document.getElementById('custom-input-modal-btn').onclick = () => {
+            const amount = parseFloat(document.getElementById('custom-input-modal-input').value);
+            const reason = document.getElementById('reason-input')?.value || 'Income added';
+            const date = today;
+
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('Error', 'Enter a valid positive number.');
+                return;
+            }
+
+            const newDeposit = contributor.deposit + amount;
+            const newTotalIncome = (contributor.totalIncome || contributor.deposit) + amount;
+            const maxTicks = contributor.contributionType === '6-month' ? 180 : 31;
+            const totalTicks = Math.floor(newTotalIncome / contributor.regAmount);
+
+            if (totalTicks > maxTicks) {
+                showMessage('Error', `Adding this would exceed ${maxTicks} ticks.`);
+                return;
+            }
+
+            const prevTicks = contributor.tickDates.length;
+            let newTickDates = [...contributor.tickDates];
+            const dateStr = date;
+            
+            for (let i = prevTicks; i < totalTicks; i++) {
+                newTickDates[i] = dateStr;
+            }
+
+            const incomeHistory = contributor.incomeHistory || [];
+            const newIncomeHistory = [...incomeHistory, { date: dateStr, amount, reason }];
+
+            updateContribution(contributorId, {
+                deposit: newDeposit,
+                totalIncome: newTotalIncome,
+                tickDates: newTickDates,
+                incomeHistory: newIncomeHistory
+            });
+
+            modal.classList.add('hidden');
+        };
+    };
+
+    window.addWithdrawal = function(contributorId) {
+        const contributor = allContributions.find(c => c.id === contributorId);
+        if (!contributor) return;
+
+        const modal = document.getElementById('custom-input-modal');
+        document.getElementById('custom-input-modal-title').textContent = '- Withdraw Amount';
+        document.getElementById('custom-input-modal-input').placeholder = 'Enter amount to withdraw';
+        document.getElementById('custom-input-modal-input').value = '';
+        
+        // Show current date (read-only or just display)
+        const today = getCurrentDateStr();
+        document.getElementById('custom-input-modal-date').style.display = 'none';
+        document.getElementById('custom-input-modal-reason').innerHTML = `
+            <div class="text-sm text-gray-600 mb-2">
+                <strong>Date:</strong> ${today}
+            </div>
+            <input type="text" id="reason-input" placeholder="Withdrawal reason (optional)" class="border px-4 py-2 rounded-lg w-full" />
+        `;
+        document.getElementById('custom-input-modal-btn').textContent = 'Withdraw';
+        modal.classList.remove('hidden');
+
+        document.getElementById('custom-input-modal-btn').onclick = () => {
+            const amount = parseFloat(document.getElementById('custom-input-modal-input').value);
+            const reason = document.getElementById('reason-input').value || 'Withdrawal';
+            const date = today;
+
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('Error', 'Enter a valid positive number.');
+                return;
+            }
+
+            if (amount > contributor.deposit) {
+                showMessage('Error', 'Cannot withdraw more than deposit.');
+                return;
+            }
+
+            const withdrawals = contributor.withdrawals || [];
+            if (withdrawals.length >= 4) {
+                showMessage('Error', 'Maximum 4 withdrawals allowed.');
+                return;
+            }
+
+            const newDeposit = contributor.deposit - amount;
+            const dateStr = date;
+            const newWithdrawals = [...withdrawals, { amount, date: dateStr, reason }];
+            const newCorrectionHistory = [...(contributor.correctionHistory || []), {
+                type: 'WITHDRAWAL',
+                oldAmount: contributor.deposit,
+                newAmount: newDeposit,
+                date: dateStr,
+                reason: `Withdrawal — ${reason}`,
+                timestamp: new Date().toISOString()
+            }];
+
+            updateContribution(contributorId, {
+                deposit: newDeposit,
+                withdrawals: newWithdrawals,
+                correctionHistory: newCorrectionHistory
+            });
+
+            modal.classList.add('hidden');
+        };
+    };
+
+    window.viewHistory = function(contributorId) {
+        const contributor = allContributions.find(c => c.id === contributorId);
+        if (!contributor) return;
+
+        const history = contributor.correctionHistory || [];
+        const modal = document.getElementById('history-modal');
+        const rows = history.length === 0
+            ? '<p style="color:#6b7280;padding:12px 0;">No history recorded yet.</p>'
+            : history.map(h => {
+                const formattedTime = h.timestamp
+                    ? new Date(h.timestamp).toLocaleString('en-NG', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+                    : h.date || '—';
+                return `
+                    <div style="border:1px solid #e5e7eb;background:#f9fafb;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+                        <div style="font-weight:700;color:#1f2937;font-size:13px;margin-bottom:4px;">${h.type || 'ACTION'}</div>
+                        <div style="font-size:11px;color:#6b7280;">${formattedTime}</div>
+                        <div style="font-size:12px;color:#374151;margin-top:4px;">📋 ${h.reason || '—'}</div>
+                    </div>
+                `;
+            }).join('');
+
+        document.getElementById('history-modal-text').innerHTML = `
+            <div style="margin-bottom:12px;">
+                <p style="font-weight:700;font-size:14px;color:#374151;">📊 ${contributor.name} — History</p>
+            </div>
+            <div style="max-height:55vh;overflow-y:auto;">
+                ${rows}
+            </div>
+        `;
+        modal.classList.remove('hidden');
+    };
+
+    async function updateContribution(id, data) {
+        try {
+            const ref = doc(db, `artifacts/${appId}/users/${userId}/usercontributions`, id);
+            await updateDoc(ref, data);
+            showMessage('Success', 'Updated successfully!');
+            LocalStorageManager.clearContributionsCache();
+        } catch (error) {
+            showMessage('Error', `Failed: ${error.message}`);
+        }
+    }
+
+    function bindActionListeners() {
+        // Dropdown positioning and toggling
+        document.querySelectorAll('.dropdown-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        });
+    }
+
+   window.openAddContributorModal = async function() {
+    document.getElementById('contributor-modal').classList.remove('hidden');
+    document.getElementById('contributor-form').reset();
+
+    // Fill name from profile
+    document.getElementById('name').value =
+        userProfile.name || '';
+
+    // Generate registration number
+    const regNo = await generateRegNumber();
+
+    document.getElementById('reg-no').value = regNo;
+};
+
+    window.showDailyIncomes = function() {
+        if (allContributions.length === 0) {
+            document.getElementById('daily-icons-modal-text').innerHTML = '<p>No data available.</p>';
+            document.getElementById('daily-icons-modal').classList.remove('hidden');
+            return;
+        }
+
+        const incomes = [];
+        allContributions.forEach(c => {
+            if (c.totalIncome > 0) {
+                incomes.push({
+                    date: c.tickDates[0] || getCurrentDateStr(),
+                    name: c.name,
+                    amount: c.totalIncome,
+                    type: 'Total Income'
+                });
+            }
+            (c.incomeHistory || []).forEach(h => {
+                incomes.push({
+                    date: h.date,
+                    name: c.name,
+                    amount: h.amount,
+                    type: 'Income Transaction'
+                });
+            });
+        });
+
+        incomes.sort((a, b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
+        const grouped = groupByDate(incomes);
+
+        let html = `
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Daily Income Statement</h3>
+        `;
+
+        grouped.forEach(group => {
+            html += `
+                <div class="daily-total-box">
+                    <div class="flex justify-between items-center mb-2">
+                        <strong>📅 ${group.date}</strong>
+                        <span class="text-green-600 font-bold">₦${group.total.toLocaleString('en-NG', {minimumFractionDigits:2})}</span>
+                    </div>
+                    <table class="statement-table">
+                        <thead class="bg-green-100">
+                            <tr><th>Contributor</th><th class="text-right">Amount</th><th>Type</th></tr>
+                        </thead>
+                        <tbody>
+                            ${group.items.map(item => `
+                                <tr>
+                                    <td>${item.name}</td>
+                                    <td class="text-right text-green-600 font-semibold">₦${item.amount.toLocaleString('en-NG', {minimumFractionDigits:2})}</td>
+                                    <td>${item.type}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        document.getElementById('daily-icons-modal-text').innerHTML = html;
+        document.getElementById('daily-icons-modal').classList.remove('hidden');
+    };
+
+    window.showDailyPayouts = function() {
+        if (allContributions.length === 0) {
+            document.getElementById('expenses-modal-text').innerHTML = '<p>No data available.</p>';
+            document.getElementById('expenses-modal').classList.remove('hidden');
+            return;
+        }
+
+        const payouts = [];
+        allContributions.forEach(c => {
+            (c.withdrawals || []).forEach(w => {
+                payouts.push({
+                    date: w.date,
+                    name: c.name,
+                    amount: w.amount,
+                    type: 'Withdrawal',
+                    reason: w.reason || '—'
+                });
+            });
+        });
+
+        payouts.sort((a, b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
+        const grouped = groupByDate(payouts);
+
+        let html = `
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Daily Payout Statement</h3>
+        `;
+
+        if (grouped.length === 0) {
+            html += '<p class="text-gray-500">No withdrawals recorded.</p>';
+        } else {
+            grouped.forEach(group => {
+                html += `
+                    <div class="daily-total-box payout">
+                        <div class="flex justify-between items-center mb-2">
+                            <strong>📅 ${group.date}</strong>
+                            <span class="text-red-600 font-bold">-₦${group.total.toLocaleString('en-NG', {minimumFractionDigits:2})}</span>
+                        </div>
+                        <table class="statement-table">
+                            <thead class="bg-orange-100">
+                                <tr><th>Contributor</th><th class="text-right">Amount</th><th>Reason</th></tr>
+                            </thead>
+                            <tbody>
+                                ${group.items.map(item => `
+                                    <tr>
+                                        <td>${item.name}</td>
+                                        <td class="text-right text-red-600 font-semibold">-₦${item.amount.toLocaleString('en-NG', {minimumFractionDigits:2})}</td>
+                                        <td>${item.reason}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+        }
+
+        html += '</div>';
+        document.getElementById('expenses-modal-text').innerHTML = html;
+        document.getElementById('expenses-modal').classList.remove('hidden');
+    };
+    
+    async function generateRegNumber() {
+    try {
+        const ref = collection(
+            db,
+            `artifacts/${appId}/users/${userId}/usercontributions`
+        );
+
+        const q = query(
+            ref,
+            orderBy("regNo", "desc"),
+            limit(1)
+        );
+
+        const snapshot = await getDocs(q);
+
+        let nextNumber = 1;
+
+        if (!snapshot.empty) {
+            const lastRegNo = snapshot.docs[0].data().regNo || "PFS000";
+            const numericPart =
+                parseInt(lastRegNo.replace("PFS", "")) || 0;
+
+            nextNumber = numericPart + 1;
+        }
+
+        return `PFS${String(nextNumber).padStart(3, "0")}`;
+    } catch (error) {
+        console.error("Reg Number Error:", error);
+        return "PFS001";
+    }
+}
+
+  // Service Worker Registration
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("SW Registered"))
+      .catch(err => console.log("SW Error:", err));
+  }
+
+</script>
+
+<!-- HEADER -->
+<header class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div id="user-avatar" class="header-avatar">PF</div>
+            <div>
+                <h1 class="text-lg font-bold text-gray-900">Hi, <span id="user-name-display" class="text-yellow-700">Guest</span>!</h1>
+                <p class="text-xs text-gray-400" id="user-phone-display">—</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="logoutUser()" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+</header>
+
+<div class="max-w-4xl mx-auto">
+
+    <!-- ── CONTRIBUTIONS TAB ─────────────────────────────────────── -->
+    <div id="contributions-tab" class="tab-content active p-4">
+
+        <div class="section-header">
+            <div class="text-xs uppercase tracking-widest opacity-60 mb-1">Overview</div>
+            <h2 class="text-xl font-bold mb-3">My Contributions</h2>
+            <div class="flex gap-2">
+                <div class="stat-chip">
+                    <div class="text-xs opacity-60">Active Books</div>
+                    <div class="text-xl font-bold" id="stat-books">—</div>
+                </div>
+                <div class="stat-chip">
+                    <div class="text-xs opacity-60">Total Days Ticked</div>
+                    <div class="text-xl font-bold" id="stat-ticks">—</div>
+                </div>
+                <div class="stat-chip">
+                    <div class="text-xs opacity-60">Total Paid</div>
+                    <div class="text-lg font-bold" id="stat-total">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4 flex gap-2 flex-wrap">
+            <button onclick="openAddContributorModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700">
+                <i class="fas fa-user-plus"></i> Add Contribution
+            </button>
+            <button onclick="showDailyIncomes()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700">
+                <i class="fas fa-money-bill"></i> Daily Incomes
+            </button>
+            <button onclick="showDailyPayouts()" class="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-700">
+                <i class="fas fa-credit-card"></i> Daily Payouts
+            </button>
+        </div>
+
+        <div id="contrib-list"></div>
+    </div>
+
+    <!-- ── PROFILE TAB ────────────────────────────────────────────── -->
+    <div id="profile-tab" class="tab-content p-4">
+
+        <div class="section-header text-center mb-4">
+            <div id="profile-avatar" class="header-avatar mx-auto mb-3" style="width:70px;height:70px;font-size:26px;border-radius:20px">PF</div>
+            <h2 id="profile-fullname" class="text-2xl font-bold">—</h2>
+            <p id="profile-phone-sub" class="text-sm opacity-60 mt-1">—</p>
+            <button onclick="openEditProfileModal()" class="btn-edit mt-3">
+                <i class="fas fa-edit"></i> Edit Email
+            </button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow border border-gray-100 px-5 py-2 mb-4">
+            <div class="text-xs uppercase tracking-widest font-bold text-gray-400 pt-4 pb-2">Personal Information</div>
+            <div id="profile-info-rows"></div>
+        </div>
+    </div>
+
+    <!-- ── SETTINGS TAB ───────────────────────────────────────────── -->
+    <div id="settings-tab" class="tab-content p-4">
+        <div class="bg-white rounded-2xl shadow p-6 space-y-3">
+            <h2 class="text-xl font-semibold mb-4">Settings</h2>
+            
+            <!-- Theme Toggle -->
+            <div class="theme-switch">
+                <div class="flex-1">
+                    <div class="font-medium text-gray-800">Dark Mode</div>
+                    <p class="text-xs text-gray-500">Enable dark theme for better night viewing</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- Other Settings -->
+            <button class="w-full text-left py-4 px-4 border rounded-xl flex items-center gap-3 hover:bg-gray-50 transition">
+                <i class="fas fa-bell text-xl text-yellow-600"></i>
+                <span class="font-medium">Notifications</span>
+            </button>
+            <button class="w-full text-left py-4 px-4 border rounded-xl flex items-center gap-3 hover:bg-gray-50 transition">
+                <i class="fas fa-lock text-xl text-yellow-600"></i>
+                <span class="font-medium">Change Password</span>
+            </button>
+            <button class="w-full text-left py-4 px-4 border rounded-xl flex items-center gap-3 hover:bg-red-50 transition text-red-600">
+                <i class="fas fa-trash text-xl"></i>
+                <span class="font-medium">Delete Account</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ── SUPPORT TAB ───────────────────────���────────────────────── -->
+    <div id="support-tab" class="tab-content p-4">
+        <div class="bg-white rounded-2xl shadow p-6">
+            <h2 class="text-xl font-semibold mb-6">Support</h2>
+            <div class="space-y-3 mb-6">
+                <a href="mailto:support@prosperouscooperative.com"
+                   class="flex items-center gap-3 p-4 border rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium">
+                    <i class="fas fa-envelope text-yellow-600 text-lg"></i>
+                    support@prosperouscooperative.com
+                </a>
+                <a href="tel:+2348089558312"
+                   class="flex items-center gap-3 p-4 border rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium">
+                    <i class="fas fa-phone text-yellow-600 text-lg"></i>
+                    +234 808 955 8312
+                </a>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                <p class="text-sm text-blue-900">Need help with your contributions? Our team is ready to assist you 24/7.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- FOOTER with Policy & Terms Links -->
+<footer class="bg-white border-t border-gray-200 py-4 mt-8">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+        <div class="flex flex-wrap justify-center gap-2 mb-2">
+            <a href="policy.html" class="footer-link"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+            <span class="footer-divider">•</span>
+            <a href="terms.html" class="footer-link"><i class="fas fa-file-contract"></i> Terms & Conditions</a>
+            <span class="footer-divider">•</span>
+            <a href="faq.html" class="footer-link"><i class="fas fa-question-circle"></i> FAQ</a>
+        </div>
+        <p class="text-xs text-gray-500">© 2025 Prosperous Financial Services. All rights reserved.</p>
+    </div>
+</footer>
+
+<!-- MESSAGE MODAL -->
+<div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
+            <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <p id="message-modal-text" class="text-gray-700"></p>
+    </div>
+</div>
+
+<!-- CONFIRMATION MODAL -->
+<div id="confirmation-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="confirmation-modal-title" class="text-xl font-bold text-gray-800">Confirm</h3>
+            <button id="confirmation-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <p id="confirmation-modal-text" class="text-gray-700 mb-6"></p>
+        <div class="flex justify-end gap-4">
+            <button id="confirmation-modal-no" class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500">No</button>
+            <button id="confirmation-modal-yes" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Yes</button>
+        </div>
+    </div>
+</div>
+
+<!-- CUSTOM INPUT MODAL -->
+<div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="custom-input-modal-title" class="text-xl font-bold text-gray-800">Modal</h3>
+            <button id="custom-input-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <input type="number" id="custom-input-modal-input" placeholder="Amount" class="w-full border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">Date:</label>
+                <input type="date" id="custom-input-modal-date" class="w-full border px-4 py-2 rounded-lg" />
+            </div>
+            <div id="custom-input-modal-reason"></div>
+            <button id="custom-input-modal-btn" class="w-full bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">Submit</button>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div id="history-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">History</h3>
+            <button id="history-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="history-modal-text" class="text-gray-700"></div>
+    </div>
+</div>
+
+<!-- DAILY INCOMES MODAL -->
+<div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
+            <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="daily-icons-modal-text" class="text-gray-700"></div>
+    </div>
+</div>
+
+<!-- DAILY PAYOUTS MODAL -->
+<div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">Daily Payouts</h3>
+            <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="expenses-modal-text" class="text-gray-700"></div>
+    </div>
+</div>
+
+<!-- ADD CONTRIBUTOR MODAL -->
+<div id="contributor-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Add New Contribution</h2>
+            <button id="contributor-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="contributor-form" class="space-y-4">
+            <input
+                type="text"
+                id="name"
+                readonly
+                placeholder="Loading name..."
+                class="w-full border px-4 py-2 rounded-lg bg-gray-100"
+            />            
+            <input type="text"
+                id="reg-no"
+                readonly
+                placeholder="Generated Automatically"
+                class="w-full border px-4 py-2 rounded-lg bg-gray-100" />
+            <div>
+                <label class="block text-xs text-gray-600 mb-2">Contribution Type:</label>
+                <select id="contribution-type" required class="w-full border px-4 py-2 rounded-lg">
+                    <option value="">Select contribution type</option>
+                    <option value="daily">Daily Contribution (31 days)</option>
+                    <option value="6-month">6-Month Contribution (180 days)</option>
+                </select>
+            </div>
+            <input type="number" id="reg-amount" placeholder="Daily Registration Amount (₦)" required class="w-full border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+            <input type="number" id="deposit" placeholder="Initial Deposit (₦)" required class="w-full border px-4 py-2 rounded-lg" min="0" step="0.01" />
+            <p class="text-xs text-gray-500 italic">💡 Ticks will be calculated automatically based on deposit ÷ daily rate</p>
+            <button type="submit" class="w-full bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">Add Entry</button>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div id="edit-profile-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Edit Profile</h2>
+            <button id="edit-profile-modal-close" class="text-gray-500 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="edit-profile-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                <input
+                    type="email"
+                    id="edit-email"
+                    placeholder="Enter your email"
+                    required
+                    class="w-full border px-4 py-2 rounded-lg"
+                />
+                <p class="text-xs text-gray-500 mt-1">💡 Only email can be edited. Other details require admin assistance.</p>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700">Save Email</button>
+        </form>
+    </div>
+</div>
+
+<!-- BOTTOM NAVIGATION -->
+<div class="bottom-nav">
+    <div class="max-w-4xl mx-auto flex justify-around">
+        <a href="#" data-tab="contributions" class="nav-link active">
+            <i class="fas fa-wallet"></i><span>Contributions</span>
+        </a>
+        <a href="#" data-tab="profile" class="nav-link">
+            <i class="fas fa-user"></i><span>Profile</span>
+        </a>
+        <a href="#" data-tab="settings" class="nav-link">
+            <i class="fas fa-cog"></i><span>Settings</span>
+        </a>
+        <a href="#" data-tab="support" class="nav-link">
+            <i class="fas fa-headset"></i><span>Support</span>
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

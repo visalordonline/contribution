@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Prosperous Financial Services</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e2937);
+      color: white;
+    }
+
+    .wizard-container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Skip Button on Slide */
+    .skip-overlay {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 100;
+    }
+
+    .btn-skip-overlay {
+      padding: 8px 16px;
+      background: transparent;
+      color: #aaa;
+      border: 1px solid #aaa;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-height: 36px;
+      touch-action: manipulation;
+    }
+
+    .btn-skip-overlay:hover {
+      color: #fff;
+      border-color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-skip-overlay:active {
+      transform: scale(0.95);
+    }
+
+    .slides {
+      flex: 1;
+      display: flex;
+      transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1); /* Smoother easing */
+      cursor: grab;
+      overflow: hidden;
+      will-change: transform; /* Performance boost */
+    }
+
+    .slides.dragging {
+      transition: none;
+      cursor: grabbing;
+    }
+
+    .slide {
+      min-width: 100%;
+      padding: 40px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      justify-content: center;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .slide img {
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
+      margin-bottom: 24px;
+      border-radius: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .slide h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .slide p {
+      font-size: 14px;
+      opacity: 0.9;
+      max-width: 100%;
+      line-height: 1.5;
+      padding: 0 8px;
+    }
+
+    .progress-dots {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 12px 0 8px 0;
+      flex-shrink: 0;
+      padding: 0 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 215, 0, 0.4);
+      transition: all 0.3s;
+      cursor: pointer;
+      flex-shrink: 0;
+      touch-action: manipulation;
+    }
+
+    .dot.active {
+      background: #FFD700;
+      width: 24px;
+      border-radius: 10px;
+    }
+
+    .dot:hover {
+      background: rgba(255, 215, 0, 0.7);
+    }
+
+    .navigation {
+      padding: 12px 16px 20px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      min-height: 56px;
+    }
+
+    .nav-btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-height: 40px;
+      touch-action: manipulation;
+      white-space: nowrap;
+      flex: 1;
+      max-width: 140px;
+    }
+
+    .btn-skip {
+      background: transparent;
+      color: #aaa;
+      border: 1px solid #aaa;
+      flex: 0.9;
+    }
+
+    .btn-skip:hover {
+      color: #fff;
+      border-color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-skip:active {
+      transform: scale(0.95);
+    }
+
+    .btn-next {
+      background: #FFD700;
+      color: #000;
+      flex: 1.1;
+    }
+
+    .btn-next:hover {
+      background: #FFC700;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    }
+
+    .btn-next:active {
+      transform: translateY(0) scale(0.95);
+    }
+
+    /* Auto-slide progress bar */
+    .auto-slide-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: #FFD700;
+      transition: width 0.05s linear;
+      opacity: 0.5;
+      z-index: 5;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1a1f2e, #252d3d);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      max-width: 450px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      animation: slideUp 0.3s ease-out;
+      display: flex;
+      flex-direction: column;
+      margin: auto;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      font-size: 18px;
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 24px;
+      cursor: pointer;
+      transition: color 0.3s;
+      min-width: 24px;
+      padding: 0;
+      touch-action: manipulation;
+    }
+
+    .modal-close:hover { color: #fff; }
+
+    .modal-body {
+      padding: 16px 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-body h3 {
+      font-size: 15px;
+      margin-bottom: 10px;
+      margin-top: 10px;
+      color: #FFD700;
+      font-weight: 600;
+    }
+
+    .modal-body h3:first-child { margin-top: 0; }
+
+    .modal-body p { margin-bottom: 10px; opacity: 0.9; }
+
+    .modal-body ul { margin-left: 16px; margin-bottom: 10px; }
+    .modal-body li { margin-bottom: 6px; }
+
+    .modal-footer {
+      padding: 16px 20px 20px 20px;
+      border-top: 1px solid rgba(255, 215, 0, 0.2);
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .btn-decline, .btn-accept {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-height: 36px;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+
+    .btn-decline {
+      background: transparent;
+      color: #aaa;
+      border: 1px solid #aaa;
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .btn-decline:hover {
+      color: #fff;
+      border-color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-decline:active { transform: scale(0.95); }
+
+    .btn-accept {
+      background: #FFD700;
+      color: #000;
+      flex: 1;
+      min-width: 100px;
+    }
+
+    .btn-accept:hover {
+      background: #FFC700;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    }
+
+    .btn-accept:active { transform: translateY(0) scale(0.95); }
+
+    /* Responsive adjustments */
+    @media (min-width: 481px) and (max-width: 1024px) {
+      .slide { padding: 50px 20px 30px; }
+      .slide img { width: 240px; height: 240px; margin-bottom: 30px; }
+      .slide h1 { font-size: 24px; }
+      .slide p { font-size: 15px; max-width: 320px; }
+    }
+
+    @media (min-width: 1025px) {
+      .slide { padding: 60px 25px 40px; }
+      .slide img { width: 260px; height: 260px; margin-bottom: 40px; }
+      .slide h1 { font-size: 28px; }
+      .slide p { font-size: 16px; max-width: 300px; }
+    }
+
+    @media (orientation: landscape) and (max-height: 600px) {
+      .slide { padding: 20px 16px 15px; justify-content: flex-start; }
+      .slide img { width: 140px; height: 140px; margin-bottom: 12px; }
+      .slide h1 { font-size: 18px; }
+      .slide p { font-size: 12px; }
+    }
+
+    @media (max-width: 380px) {
+      .slide h1 { font-size: 20px; }
+      .slide p { font-size: 13px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wizard-container">
+
+  <!-- Skip Button Overlay -->
+  <div class="skip-overlay">
+    <button class="btn-skip-overlay" id="skipBtnOverlay">Skip</button>
+  </div>
+
+  <!-- Slides -->
+  <div class="slides" id="slides">
+    <!-- Slide 1 -->
+    <div class="slide">
+      <img src="https://picsum.photos/id/1015/600/600" alt="Prosperous Logo">
+      <h1>Welcome to Prosperous</h1>
+      <p>Secure savings and smart financial solutions designed for your growth.</p>
+    </div>
+
+    <!-- Slide 2 -->
+    <div class="slide">
+      <img src="https://picsum.photos/id/201/600/600" alt="Growth">
+      <h1>Build Wealth Together</h1>
+      <p>Join a trusted community making consistent contributions and accessing flexible loans.</p>
+    </div>
+
+    <!-- Slide 3 -->
+    <div class="slide">
+      <img src="https://picsum.photos/id/251/600/600" alt="Loans">
+      <h1>Achieve Your Goals</h1>
+      <p>From January loans to mini loans — get the financial support you need when you need it.</p>
+    </div>
+  </div>
+
+  <!-- Auto-slide Progress Bar -->
+  <div class="auto-slide-progress" id="progressBar"></div>
+
+  <!-- Progress Dots -->
+  <div class="progress-dots" id="progressDots">
+    <span class="dot active"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+
+  <!-- Navigation Buttons -->
+  <div class="navigation">
+    <button class="nav-btn btn-skip" id="skipBtn">Skip</button>
+    <button class="nav-btn btn-next" id="nextBtn">Next</button>
+  </div>
+</div>
+
+<!-- Consent Modal -->
+<div class="modal-overlay" id="consentModal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Welcome to Prosperous Financial Services</h2>
+    </div>
+    <div class="modal-body">
+      <p>Before you continue, please review and accept our <strong>Terms of Service</strong> and <strong>Privacy Policy</strong>.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-decline" onclick="declineConsent()">Decline</button>
+      <button class="btn-accept" onclick="showTermsOfService()">Accept & Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Policy Modal -->
+<div class="modal-overlay" id="policyModal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Terms of Service</h2>
+      <button class="modal-close" onclick="closePolicyModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-decline" onclick="closePolicyModal()">Close</button>
+      <button class="btn-accept" onclick="acceptPolicy()">I Agree</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== VARIABLES =====
+  let currentSlide = 0;
+  const totalSlides = 3;
+  const slidesContainer = document.getElementById('slides');
+  const dots = document.querySelectorAll('.dot');
+  const nextBtn = document.getElementById('nextBtn');
+  const skipBtn = document.getElementById('skipBtn');
+  const skipBtnOverlay = document.getElementById('skipBtnOverlay');
+  const progressBar = document.getElementById('progressBar');
+  
+  // Auto-slide settings
+  const AUTO_SLIDE_DURATION = 4500; // Slightly faster for better UX
+  let autoSlideTimer;
+  let progressTimer;
+  let isDragging = false;
+  let dragStart = 0;
+  let dragCurrent = 0;
+
+  // ===== CHECK POLICY ACCEPTANCE FIRST =====
+  function checkPolicyAcceptance() {
+    if (localStorage.getItem("acceptedPolicy") === "true") {
+      // Already accepted - go directly to login
+      window.location.href = "user_login.html";
+      return true;
+    }
+    return false;
+  }
+
+  // ===== UI UPDATE =====
+  function updateUI() {
+    slidesContainer.style.transform = `translateX(-${currentSlide * 100}%)`;
+    
+    dots.forEach((dot, index) => {
+      dot.classList.toggle('active', index === currentSlide);
+    });
+
+    nextBtn.textContent = (currentSlide === totalSlides - 1) ? "Get Started" : "Next";
+    resetAutoSlide();
+  }
+
+  // ===== AUTO-SLIDE FUNCTIONALITY =====
+  function resetAutoSlide() {
+    clearTimeout(autoSlideTimer);
+    clearInterval(progressTimer);
+    progressBar.style.width = '0%';
+
+    autoSlideTimer = setTimeout(() => {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateUI();
+      } else {
+        showConsentModal();
+      }
+    }, AUTO_SLIDE_DURATION);
+
+    // Animate progress bar
+    let progress = 0;
+    progressTimer = setInterval(() => {
+      progress += 0.8; // Faster increment for smoother feel
+      progressBar.style.width = `${progress}%`;
+      if (progress >= 100) clearInterval(progressTimer);
+    }, AUTO_SLIDE_DURATION / 125);
+  }
+
+  // ===== NAVIGATION =====
+  nextBtn.addEventListener('click', () => {
+    if (currentSlide < totalSlides - 1) {
+      currentSlide++;
+      updateUI();
+    } else {
+      showConsentModal();
+    }
+  });
+
+  skipBtn.addEventListener('click', showConsentModal);
+  skipBtnOverlay.addEventListener('click', showConsentModal);
+
+  // ===== DOT NAVIGATION =====
+  dots.forEach((dot, index) => {
+    dot.addEventListener('click', () => {
+      currentSlide = index;
+      updateUI();
+    });
+  });
+
+  // ===== DRAG FUNCTIONALITY (Improved) =====
+  const slidesEl = document.getElementById('slides');
+
+  function startDrag(e) {
+    isDragging = true;
+    dragStart = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    dragCurrent = dragStart;
+    slidesEl.classList.add('dragging');
+    clearTimeout(autoSlideTimer);
+    clearInterval(progressTimer);
+  }
+
+  function moveDrag(e) {
+    if (!isDragging) return;
+    dragCurrent = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    const diff = dragCurrent - dragStart;
+    const offset = -(currentSlide * 100) + (diff / window.innerWidth) * 100;
+    
+    slidesEl.style.transition = 'none';
+    slidesEl.style.transform = `translateX(${offset}%)`;
+  }
+
+  function endDrag(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    slidesEl.classList.remove('dragging');
+    
+    const diff = dragCurrent - dragStart;
+    const threshold = window.innerWidth * 0.25; // Increased threshold for better control
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0 && currentSlide > 0) currentSlide--;
+      else if (diff < 0 && currentSlide < totalSlides - 1) currentSlide++;
+    }
+
+    slidesEl.style.transition = 'transform 0.5s cubic-bezier(0.32, 0.72, 0, 1)';
+    updateUI();
+  }
+
+  // Mouse + Touch
+  slidesEl.addEventListener('mousedown', startDrag);
+  slidesEl.addEventListener('mousemove', moveDrag);
+  slidesEl.addEventListener('mouseup', endDrag);
+  slidesEl.addEventListener('mouseleave', endDrag);
+
+  slidesEl.addEventListener('touchstart', startDrag, { passive: true });
+  slidesEl.addEventListener('touchmove', moveDrag, { passive: false });
+  slidesEl.addEventListener('touchend', endDrag, { passive: true });
+
+  // ===== MODALS =====
+  function showConsentModal() {
+    clearTimeout(autoSlideTimer);
+    clearInterval(progressTimer);
+    document.getElementById('consentModal').style.display = 'flex';
+  }
+
+  window.showTermsOfService = function() {
+    const termsContent = `
+      <h3>Terms of Service</h3>
+      <p>Welcome to Prosperous Financial Services. These Terms govern your use of our platform.</p>
+      
+      <h3>1. Acceptance of Terms</h3>
+      <p>By using Prosperous, you accept these Terms.</p>
+      
+      <h3>2. Use License</h3>
+      <p>You may view materials for personal use only. You may not modify, copy commercially, reverse engineer, or redistribute.</p>
+
+      <h3>3. Disclaimer</h3>
+      <p>Services provided "as is". No warranties.</p>
+
+      <h3>4. Limitations of Liability</h3>
+      <p>Prosperous is not liable for damages arising from use of the service.</p>
+    `;
+    
+    document.getElementById('modalTitle').textContent = "Terms of Service";
+    document.getElementById('modalBody').innerHTML = termsContent;
+    document.getElementById('policyModal').style.display = 'flex';
+    document.getElementById('consentModal').style.display = 'none';
+  };
+
+  window.acceptPolicy = function() {
+    localStorage.setItem("acceptedPolicy", "true");
+    localStorage.setItem("policyAcceptanceDate", new Date().toISOString());
+    document.getElementById('policyModal').style.display = 'none';
+    
+    setTimeout(() => {
+      window.location.href = "user_login.html";
+    }, 300);
+  };
+
+  window.closePolicyModal = function() {
+    document.getElementById('policyModal').style.display = 'none';
+    document.getElementById('consentModal').style.display = 'flex';
+  };
+
+  window.declineConsent = function() {
+    alert("You must accept our policies to continue using Prosperous Financial Services.");
+    document.getElementById('consentModal').style.display = 'none';
+    resetAutoSlide();
+  };
+
+  // ===== INITIALIZE =====
+  if (!checkPolicyAcceptance()) {
+    updateUI();
+  }
+
+  // Service Worker
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("Service Worker Registered"))
+      .catch(err => console.log("SW Error:", err));
+  }
+
+  // Prevent unwanted drag
+  document.addEventListener('dragstart', e => e.preventDefault());
+</script>
+
+</body>
+</html>

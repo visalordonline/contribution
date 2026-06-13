@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png">
+    <title>PROSPEROUS Financial Services - Register</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <style>
+        :root {
+            --navy:   #0b1f3a;
+            --navy2:  #132d52;
+            --gold:   #c9a84c;
+            --gold2:  #e8c96d;
+            --cream:  #f7f4ef;
+            --white:  #ffffff;
+            --muted:  #7a8799;
+            --border: #e4e1db;
+            --success:#1a7f5a;
+            --error:  #d32f2f;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            background: var(--cream);
+            color: var(--navy);
+        }
+
+        /* ── TOP BAND ── */
+        .top-band {
+            background: linear-gradient(135deg, var(--navy), var(--navy2));
+            padding: 32px 24px 72px;
+            text-align: center;
+            position: relative;
+        }
+        .top-band::after {
+            content: '';
+            position: absolute;
+            bottom: -2px; left: 0; right: 0;
+            height: 52px;
+            background: var(--cream);
+            border-radius: 28px 28px 0 0;
+        }
+        .logo-icon {
+            width: 56px; height: 56px;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 14px;
+            box-shadow: 0 8px 24px rgba(201,168,76,.35);
+        }
+        .top-band h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            color: var(--white);
+        }
+        .top-band p {
+            font-size: 11px;
+            color: rgba(255,255,255,.5);
+            letter-spacing: .8px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        /* ── STEPPER INDICATOR ── */
+        .stepper-wrap {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 28px 24px 0;
+        }
+        .stepper {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .step-dot {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: var(--white);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            transition: all .3s;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .step-dot.active {
+            background: var(--navy);
+            border-color: var(--navy);
+            color: var(--white);
+            box-shadow: 0 0 0 4px rgba(11,31,58,.12);
+        }
+        .step-dot.done {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: var(--white);
+        }
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: var(--border);
+            transition: background .3s;
+        }
+        .step-line.done { background: var(--gold); }
+        .step-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .step-label {
+            font-size: 10px;
+            color: var(--muted);
+            text-align: center;
+            width: 32px;
+            letter-spacing: .3px;
+            transition: color .3s;
+        }
+        .step-label.active { color: var(--navy); font-weight: 600; }
+        .step-label.done   { color: var(--gold); font-weight: 600; }
+
+        /* ── CARD ── */
+        .form-card {
+            max-width: 480px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 24px rgba(11,31,58,.07);
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .card-header {
+            padding: 22px 24px 0;
+        }
+        .card-header h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            color: var(--navy);
+        }
+        .card-header p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        /* ── STEPS ── */
+        .step-content { display: none; padding: 20px 24px 24px; }
+        .step-content.active { display: block; animation: fadeUp .25s ease; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── FIELDS ── */
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .field-grid .full { grid-column: 1 / -1; }
+
+        .field { margin-bottom: 0; }
+        .field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--navy);
+            letter-spacing: .3px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            color: var(--navy);
+            background: var(--white);
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            appearance: none;
+        }
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,168,76,.15);
+        }
+        .field textarea { resize: none; }
+        .field select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8799' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+
+        /* ── BUTTONS ── */
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .btn-prev {
+            flex: 1;
+            padding: 13px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            background: var(--white);
+            color: var(--navy);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .2s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-prev:hover { background: var(--cream); }
+        .btn-next {
+            flex: 2;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            background: var(--navy);
+            color: var(--white);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .2s, transform .15s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-next:hover  { background: var(--navy2); }
+        .btn-next:active { transform: scale(.98); }
+        .btn-submit {
+            flex: 2;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--success), #156647);
+            color: var(--white);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s, transform .15s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-submit:hover    { opacity: .9; }
+        .btn-submit:active   { transform: scale(.98); }
+        .btn-submit:disabled { opacity: .55; cursor: not-allowed; }
+
+        .btn-verify {
+            padding: 13px 20px;
+            border: none;
+            border-radius: 10px;
+            background: var(--gold);
+            color: var(--navy);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s, transform .15s;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            width: 100%;
+            margin-top: 12px;
+        }
+        .btn-verify:hover    { opacity: .9; }
+        .btn-verify:disabled { opacity: .55; cursor: not-allowed; }
+
+        .btn-resend {
+            padding: 10px 16px;
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--gold);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            margin-top: 12px;
+        }
+        .btn-resend:hover { background: rgba(201,168,76,.1); }
+        .btn-resend:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* ── LOGIN LINK ── */
+        .login-row {
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            padding: 0 24px 24px;
+        }
+        .login-row a { color: var(--navy); font-weight: 700; text-decoration: none; }
+        .login-row a:hover { text-decoration: underline; }
+
+        /* ── DIVIDER in card ── */
+        .card-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0 24px;
+        }
+
+        /* ── OTP INPUT ── */
+        .otp-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .otp-input {
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .otp-input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,168,76,.15);
+        }
+        .otp-input.filled {
+            border-color: var(--gold);
+            background: rgba(201,168,76,.05);
+        }
+
+        /* ── ALERT ── */
+        .alert {
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .alert.show { display: block; }
+        .alert.success {
+            background: rgba(26,127,90,.1);
+            color: var(--success);
+            border: 1px solid rgba(26,127,90,.2);
+        }
+        .alert.error {
+            background: rgba(211,47,47,.1);
+            color: var(--error);
+            border: 1px solid rgba(211,47,47,.2);
+        }
+
+        /* ── TIMER ── */
+        .resend-timer {
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 520px) {
+            .field-grid { grid-template-columns: 1fr; }
+            .field-grid .full { grid-column: 1; }
+            .stepper-wrap, .form-card { margin-left: 16px; margin-right: 16px; }
+            .otp-input {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP BAND -->
+<div class="top-band">
+    <div class="logo-icon">💰</div>
+    <h1>Prosperous Financial</h1>
+    <p>Member Registration</p>
+</div>
+
+<div class="stepper-wrap">
+    <!-- Step dots -->
+    <div class="stepper">
+        <div class="step-dot active" id="dot-1">1</div>
+        <div class="step-line" id="line-1"></div>
+        <div class="step-dot" id="dot-2">2</div>
+        <div class="step-line" id="line-2"></div>
+        <div class="step-dot" id="dot-3">3</div>
+        <div class="step-line" id="line-3"></div>
+        <div class="step-dot" id="dot-4">4</div>
+        <div class="step-line" id="line-4"></div>
+        <div class="step-dot" id="dot-5">5</div>
+    </div>
+    <div class="step-labels">
+        <span class="step-label active" id="lbl-1">Personal</span>
+        <span class="step-label" id="lbl-2">Location</span>
+        <span class="step-label" id="lbl-3">Banking</span>
+        <span class="step-label" id="lbl-4">Account</span>
+        <span class="step-label" id="lbl-5">Verify</span>
+    </div>
+</div>
+
+<div class="form-card">
+    <form id="register-form">
+
+        <!-- STEP 1: Personal Info -->
+        <div class="card-header" id="header-1">
+            <h2>Personal Information</h2>
+            <p>Tell us about yourself</p>
+        </div>
+        <div id="step-1" class="step-content active">
+            <div class="field-grid">
+                <div class="field full">
+                    <label>Full Name</label>
+                    <input type="text" id="name" placeholder="e.g. Amaka Okafor" required>
+                </div>
+                <div class="field">
+                    <label>Date of Birth</label>
+                    <input type="date" id="dob" required>
+                </div>
+                <div class="field">
+                    <label>NIN</label>
+                    <input type="text" id="nin" maxlength="11" placeholder="11-digit NIN" required>
+                </div>
+                <div class="field">
+                    <label>Marital Status</label>
+                    <select id="marital" required>
+                        <option value="">Select</option>
+                        <option>Single</option>
+                        <option>Married</option>
+                        <option>Divorced</option>
+                        <option>Widowed</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Occupation</label>
+                    <input type="text" id="occupation" placeholder="e.g. Teacher" required>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn-next" id="next-1">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Location -->
+        <div class="card-header" id="header-2" style="display:none">
+            <h2>Location Information</h2>
+            <p>Where are you based?</p>
+        </div>
+        <div id="step-2" class="step-content">
+            <div class="field-grid">
+                <div class="field">
+                    <label>State</label>
+                    <select id="state" required></select>
+                </div>
+                <div class="field">
+                    <label>LGA</label>
+                    <input type="text" id="lga" placeholder="Local Government Area" required>
+                </div>
+                <div class="field full">
+                    <label>Residential Address</label>
+                    <textarea id="address" rows="3" placeholder="House number, street, town…" required></textarea>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn-prev" id="prev-2">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button type="button" class="btn-next" id="next-2">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 3: Banking -->
+        <div class="card-header" id="header-3" style="display:none">
+            <h2>Banking Information</h2>
+            <p>For contribution payouts</p>
+        </div>
+        <div id="step-3" class="step-content">
+            <div class="field-grid">
+                <div class="field full">
+                    <label>Account Name</label>
+                    <input type="text" id="account-name" placeholder="As on your bank card" required>
+                </div>
+                <div class="field">
+                    <label>Account Number</label>
+                    <input type="text" id="account-number" maxlength="10" placeholder="10 digits" required>
+                </div>
+                <div class="field">
+                    <label>Bank Name</label>
+                    <select id="bank" required></select>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn-prev" id="prev-3">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button type="button" class="btn-next" id="next-3">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 4: Credentials -->
+        <div class="card-header" id="header-4" style="display:none">
+            <h2>Account Credentials</h2>
+            <p>Create your login details</p>
+        </div>
+        <div id="step-4" class="step-content">
+            <div class="field-grid">
+                <div class="field full">
+                    <label>Email Address</label>
+                    <input type="email" id="email" placeholder="your.email@example.com" required>
+                </div>
+                <div class="field full">
+                    <label>Password <span style="color:var(--muted);font-weight:400;text-transform:none">(min. 6 characters)</span></label>
+                    <input type="password" id="password" minlength="6" placeholder="Choose a strong password" required>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="button" class="btn-prev" id="prev-4">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button type="button" class="btn-next" id="next-4">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 5: Email Verification -->
+        <div class="card-header" id="header-5" style="display:none">
+            <h2>Verify Email</h2>
+            <p>We've sent a code to your email</p>
+        </div>
+        <div id="step-5" class="step-content">
+            <div id="alert-box" class="alert"></div>
+            
+            <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px; text-align: center;">
+                Enter the 6-digit verification code sent to <strong id="email-display" style="color: var(--navy)"></strong>
+            </p>
+
+            <div class="otp-container">
+                <input type="text" class="otp-input" id="otp-1" maxlength="1" inputmode="numeric">
+                <input type="text" class="otp-input" id="otp-2" maxlength="1" inputmode="numeric">
+                <input type="text" class="otp-input" id="otp-3" maxlength="1" inputmode="numeric">
+                <input type="text" class="otp-input" id="otp-4" maxlength="1" inputmode="numeric">
+                <input type="text" class="otp-input" id="otp-5" maxlength="1" inputmode="numeric">
+                <input type="text" class="otp-input" id="otp-6" maxlength="1" inputmode="numeric">
+            </div>
+
+            <button type="button" class="btn-verify" id="verify-btn">
+                <i class="fas fa-check"></i> Verify & Complete Registration
+            </button>
+
+            <div style="text-align: center; margin-top: 16px;">
+                <p style="font-size: 12px; color: var(--muted);">Didn't receive the code?</p>
+                <button type="button" class="btn-resend" id="resend-btn">
+                    <i class="fas fa-redo"></i> Resend OTP
+                </button>
+                <div class="resend-timer" id="timer-display"></div>
+            </div>
+
+            <div class="btn-row" style="margin-top: 16px;">
+                <button type="button" class="btn-prev" id="prev-5">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+            </div>
+        </div>
+
+    </form>
+
+    <div class="card-divider"></div>
+    <p class="login-row" style="padding-top:16px">
+        Already a member? <a href="user_login.html">Sign in</a>
+    </p>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+        authDomain: "contribution-c5309.firebaseapp.com",
+        projectId: "contribution-c5309",
+        messagingSenderId: "800641687170",
+        appId: "1:800641687170:web:36e0e50bdd8cf39844de9b"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    const functions = getFunctions(app, "us-central1");
+
+    // Cloud Function references
+    const sendOTPFunction = httpsCallable(functions, 'sendOTP');
+    const verifyOTPFunction = httpsCallable(functions, 'verifyOTP');
+
+    const states = ["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+    const banks  = ["Access Bank","GTBank","Zenith Bank","First Bank","UBA","Fidelity Bank","Stanbic IBTC","Polaris Bank","Wema Bank","Union Bank","Heritage Bank","Sterling Bank"];
+
+    let currentStep = 1;
+    let resendCooldown = 0;
+
+    window.onload = () => {
+        document.getElementById('state').innerHTML = '<option value="">Select State</option>' + states.map(s => `<option>${s}</option>`).join('');
+        document.getElementById('bank').innerHTML  = '<option value="">Select Bank</option>'  + banks.map(b  => `<option>${b}</option>`).join('');
+        setupOTPInputs();
+    };
+
+    // ── OTP INPUT AUTO-ADVANCE ──
+    function setupOTPInputs() {
+        for (let i = 1; i <= 6; i++) {
+            const input = document.getElementById(`otp-${i}`);
+            input.addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                if (e.target.value.length === 1 && i < 6) {
+                    document.getElementById(`otp-${i + 1}`).focus();
+                }
+                e.target.classList.toggle('filled', e.target.value.length > 0);
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && e.target.value === '' && i > 1) {
+                    document.getElementById(`otp-${i - 1}`).focus();
+                }
+            });
+        }
+    }
+
+    function showStep(next) {
+        const prev = currentStep;
+        document.getElementById(`step-${prev}`).classList.remove('active');
+        document.getElementById(`header-${prev}`).style.display = 'none';
+        document.getElementById(`step-${next}`).classList.add('active');
+        document.getElementById(`header-${next}`).style.display = 'block';
+        updateStepper(next, prev);
+        currentStep = next;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        if (next === 5) {
+            document.getElementById('email-display').textContent = document.getElementById('email').value;
+            startResendTimer();
+        }
+    }
+
+    function updateStepper(active, prev) {
+        for (let i = 1; i <= 5; i++) {
+            const dot = document.getElementById(`dot-${i}`);
+            const lbl = document.getElementById(`lbl-${i}`);
+            dot.classList.remove('active','done');
+            lbl.classList.remove('active','done');
+            if (i < active)      { dot.classList.add('done'); dot.innerHTML = '<i class="fas fa-check" style="font-size:10px"></i>'; lbl.classList.add('done'); }
+            else if (i === active){ dot.classList.add('active'); dot.textContent = i; lbl.classList.add('active'); }
+            else                  { dot.textContent = i; }
+        }
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById(`line-${i}`).classList.toggle('done', i < active);
+        }
+    }
+
+    document.getElementById('next-1').addEventListener('click', () => showStep(2));
+    document.getElementById('next-2').addEventListener('click', () => showStep(3));
+    document.getElementById('next-3').addEventListener('click', () => showStep(4));
+    document.getElementById('next-4').addEventListener('click', async () => {
+        const email = document.getElementById('email').value.trim();
+        if (!email || !email.includes('@')) {
+            alert("Please enter a valid email address.");
+            return;
+        }
+        await sendOTP(email);
+        showStep(5);
+    });
+    document.getElementById('prev-2').addEventListener('click', () => showStep(1));
+    document.getElementById('prev-3').addEventListener('click', () => showStep(2));
+    document.getElementById('prev-4').addEventListener('click', () => showStep(3));
+    document.getElementById('prev-5').addEventListener('click', () => showStep(4));
+
+    // ─── SEND OTP via Cloud Function ───
+    async function sendOTP(email) {
+        try {
+            const result = await sendOTPFunction({ email });
+            showAlert('✅ OTP sent successfully to your email', 'success');
+            console.log("✅ OTP sent:", result.data);
+        } catch (error) {
+            console.error("❌ Error sending OTP:", error);
+            showAlert('Error: ' + (error.message || 'Failed to send OTP'), 'error');
+        }
+    }
+
+    // ─── RESEND OTP ───
+    document.getElementById('resend-btn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (resendCooldown > 0) {
+            showAlert(`Please wait ${resendCooldown}s before resending`, 'error');
+            return;
+        }
+        const email = document.getElementById('email').value;
+        await sendOTP(email);
+        startResendTimer();
+    });
+
+    // ─── RESEND TIMER ───
+    function startResendTimer() {
+        resendCooldown = 60;
+        document.getElementById('resend-btn').disabled = true;
+        
+        const updateTimer = () => {
+            const timerDisplay = document.getElementById('timer-display');
+            if (resendCooldown > 0) {
+                timerDisplay.textContent = `Resend available in ${resendCooldown}s`;
+                resendCooldown--;
+                setTimeout(updateTimer, 1000);
+            } else {
+                document.getElementById('resend-btn').disabled = false;
+                timerDisplay.textContent = '';
+            }
+        };
+        updateTimer();
+    }
+
+    // ─── VERIFY OTP ───
+    document.getElementById('verify-btn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const otp = Array.from({length: 6}, (_, i) => 
+            document.getElementById(`otp-${i + 1}`).value
+        ).join('');
+
+        if (otp.length !== 6) {
+            showAlert('Please enter all 6 digits', 'error');
+            return;
+        }
+
+        try {
+            const email = document.getElementById('email').value;
+            const result = await verifyOTPFunction({ email, otp });
+            
+            if (result.data.success) {
+                showAlert('✅ Email verified successfully!', 'success');
+                await completeRegistration();
+            }
+        } catch (error) {
+            console.error("❌ Verification error:", error);
+            showAlert('Error: ' + (error.message || 'Verification failed'), 'error');
+            clearOTPInputs();
+        }
+    });
+
+    function clearOTPInputs() {
+        for (let i = 1; i <= 6; i++) {
+            document.getElementById(`otp-${i}`).value = '';
+            document.getElementById(`otp-${i}`).classList.remove('filled');
+        }
+        document.getElementById('otp-1').focus();
+    }
+
+    // ─── ALERT HELPER ───
+    function showAlert(message, type) {
+        const alertBox = document.getElementById('alert-box');
+        alertBox.textContent = message;
+        alertBox.className = `alert show ${type}`;
+        if (type === 'success') {
+            setTimeout(() => alertBox.classList.remove('show'), 3000);
+        }
+    }
+
+    // ─── COLLECT & VALIDATE FORM DATA ───
+    function collectAndValidateFormData() {
+        const data = {
+            name: document.getElementById('name').value.trim(),
+            dob: document.getElementById('dob').value.trim(),
+            nin: document.getElementById('nin').value.trim(),
+            maritalStatus: document.getElementById('marital').value.trim(),
+            occupation: document.getElementById('occupation').value.trim(),
+            state: document.getElementById('state').value.trim(),
+            lga: document.getElementById('lga').value.trim(),
+            address: document.getElementById('address').value.trim(),
+            accountName: document.getElementById('account-name').value.trim(),
+            accountNumber: document.getElementById('account-number').value.trim(),
+            bank: document.getElementById('bank').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+        };
+
+        if (!data.name || data.name.length < 2) {
+            alert("Please enter a valid full name.");
+            return null;
+        }
+        if (!data.dob) {
+            alert("Please select your date of birth.");
+            return null;
+        }
+        if (!data.nin || data.nin.length !== 11 || !/^\d+$/.test(data.nin)) {
+            alert("Please enter a valid 11-digit NIN.");
+            return null;
+        }
+        if (!data.maritalStatus) {
+            alert("Please select your marital status.");
+            return null;
+        }
+        if (!data.occupation || data.occupation.length < 2) {
+            alert("Please enter a valid occupation.");
+            return null;
+        }
+        if (!data.state) {
+            alert("Please select your state.");
+            return null;
+        }
+        if (!data.lga || data.lga.length < 2) {
+            alert("Please enter a valid LGA.");
+            return null;
+        }
+        if (!data.address || data.address.length < 5) {
+            alert("Please enter a valid residential address.");
+            return null;
+        }
+        if (!data.accountName || data.accountName.length < 2) {
+            alert("Please enter a valid account name.");
+            return null;
+        }
+        if (!data.accountNumber || data.accountNumber.length !== 10 || !/^\d+$/.test(data.accountNumber)) {
+            alert("Please enter a valid 10-digit account number.");
+            return null;
+        }
+        if (!data.bank) {
+            alert("Please select your bank.");
+            return null;
+        }
+        if (!data.email || !data.email.includes('@')) {
+            alert("Please enter a valid email address.");
+            return null;
+        }
+        if (!data.password || data.password.length < 6) {
+            alert("Password must be at least 6 characters.");
+            return null;
+        }
+
+        return data;
+    }
+
+    // ─── BUILD USER DOCUMENT FOR FIRESTORE ───
+    function buildUserDocumentData(formData, userId) {
+        return {
+            uid: userId,
+            name: formData.name,
+            dateOfBirth: formData.dob,
+            nin: formData.nin,
+            maritalStatus: formData.maritalStatus,
+            occupation: formData.occupation,
+            state: formData.state,
+            lga: formData.lga,
+            address: formData.address,
+            accountName: formData.accountName,
+            accountNumber: formData.accountNumber,
+            bank: formData.bank,
+            email: formData.email,
+            role: "user",
+            status: "active",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            registrationComplete: true,
+            emailVerified: true,
+            phoneVerified: false
+        };
+    }
+
+    // ─── COMPLETE REGISTRATION ───
+    async function completeRegistration() {
+        const formData = collectAndValidateFormData();
+        if (!formData) return;
+
+        const verifyBtn = document.getElementById('verify-btn');
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Completing Registration…';
+
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+            const userId = cred.user.uid;
+
+            const userData = buildUserDocumentData(formData, userId);
+            await setDoc(doc(db, "onlineuser", userId), userData);
+
+            console.log("✅ User data saved:", userData);
+            showAlert("✅ Registration Successful! Welcome to Prosperous Financial Services.", 'success');
+
+            setTimeout(() => {
+                window.location.href = 'user_page.html';
+            }, 2000);
+
+        } catch (err) {
+            console.error("❌ Registration error:", err);
+            let msg = err.message;
+            if (err.code === 'auth/email-already-in-use') {
+                msg = "This email is already registered. Please sign in instead.";
+            }
+            showAlert("Registration failed: " + msg, 'error');
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fas fa-check"></i> Verify & Complete Registration';
+        }
+    }
+    
+    // Service Worker Registration
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js")
+            .then(() => console.log("✅ SW Registered"))
+            .catch(err => console.log("⚠️ SW Error:", err));
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png">
+    <title>FAQ - Prosperous Financial Services</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --navy: #0b1f3a;
+            --gold: #c9a84c;
+        }
+        
+        body.dark-mode {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode header {
+            background-color: #1e293b !important;
+            border-bottom-color: #334155 !important;
+        }
+        
+        body.dark-mode .bg-white {
+            background-color: #1e293b !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3 {
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode p, body.dark-mode li {
+            color: #cbd5e1 !important;
+        }
+        
+        body.dark-mode .faq-item {
+            border-color: #334155 !important;
+        }
+        
+        body.dark-mode .faq-question {
+            background-color: #0f172a !important;
+            color: #e2e8f0 !important;
+        }
+        
+        body.dark-mode .faq-answer {
+            background-color: #0f172a !important;
+            color: #cbd5e1 !important;
+        }
+        
+        .faq-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        
+        .faq-question {
+            background-color: #f3f4f6;
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        
+        .faq-question:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .faq-question i {
+            transition: transform 0.3s;
+        }
+        
+        .faq-item.active .faq-question {
+            background-color: #0b1f3a;
+            color: white;
+        }
+        
+        .faq-item.active .faq-question i {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            background-color: #f9fafb;
+            padding: 16px;
+            display: none;
+            color: #374151;
+            line-height: 1.6;
+        }
+        
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<header class="bg-white shadow-sm sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <a href="user_page.html" class="text-gray-600 hover:text-gray-900">
+                <i class="fas fa-arrow-left text-xl"></i>
+            </a>
+            <h1 class="text-2xl font-bold text-gray-900">FAQ</h1>
+        </div>
+        <button onclick="toggleTheme()" class="bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm font-semibold hover:bg-yellow-600">
+            <i class="fas fa-moon"></i> Dark
+        </button>
+    </div>
+</header>
+
+<div class="max-w-4xl mx-auto px-4 py-8 pb-16">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
+            <p class="text-gray-600">Find answers to common questions about Prosperous Financial Services</p>
+        </div>
+
+        <!-- Account & Registration -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="fas fa-user text-blue-600"></i> Account & Registration
+            </h3>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do I create an account?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Click on the "Sign Up" button on our website, fill in your personal details including name, email, phone number, and password. Complete the verification process, and your account will be ready to use.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What information do I need to register?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    You'll need to provide your full name, email address, phone number, date of birth, NIN (National Identification Number), marital status, occupation, state, LGA, residential address, and bank details for processing withdrawals.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do I reset my password?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Click on "Forgot Password" on the login page, enter your email address, and follow the instructions sent to your email to reset your password securely.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I update my profile information?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Yes, you can update your email address through your profile. For other details, please contact our support team at support@prosperouscooperative.com as these require admin verification.
+                </div>
+            </div>
+        </div>
+
+        <!-- Contributions -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="fas fa-piggy-bank text-green-600"></i> Contributions
+            </h3>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What is a contribution?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    A contribution is a deposit you make into your account with Prosperous Financial Services. Based on your daily contribution amount, you earn "ticks" that track your participation. Each tick represents one day of contribution.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What are the different contribution plans?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    We offer two main plans: Daily Contribution Plan (31 days) and 6-Month Contribution Plan (180 days). Choose the plan that suits your financial goals.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How are ticks calculated?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Ticks are calculated by dividing your deposit amount by your daily registration amount. For example, if your daily rate is ₦1,000 and you deposit ₦5,000, you'll get 5 ticks.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Can I add more funds to my contribution?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Yes! You can add income (additional funds) to your existing contribution through the "Add Income" button. This will increase your ticks accordingly.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What happens when I complete all ticks?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    When you complete all ticks in your contribution plan, your status will change to "Complete" and you'll be eligible for withdrawal or reinvestment in a new contribution cycle.
+                </div>
+            </div>
+        </div>
+
+        <!-- Withdrawals -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="fas fa-credit-card text-orange-600"></i> Withdrawals & Payments
+            </h3>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How do I withdraw my funds?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Click the "Withdraw" button on your contribution card, enter the amount you wish to withdraw, and submit your request. The funds will be transferred to your registered bank account.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How long does withdrawal take?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Withdrawal processing typically takes 3-5 business days, depending on your bank. Some banks may process faster during business hours. You'll receive a confirmation notification once processed.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Are there withdrawal limits?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Withdrawal limits may apply based on your account status and verification level. You cannot withdraw more than your available balance. Contact our support team for details about your specific limits.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Are there fees for withdrawals?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Bank transfer fees may be deducted from your withdrawal amount. The exact fees depend on your bank. We'll show you the deduction before you confirm the withdrawal.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How many times can I withdraw?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    You can withdraw up to 4 times per contribution cycle. This is to ensure stability and proper fund management. Additional withdrawals may be subject to special approval.
+                </div>
+            </div>
+        </div>
+
+        <!-- Security & Privacy -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="fas fa-lock text-red-600"></i> Security & Privacy
+            </h3>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Is my data secure?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Yes, we use industry-standard encryption and security protocols to protect your personal and financial information. Your data is stored securely and never shared with unauthorized parties.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What should I do if my account is compromised?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Immediately contact our support team at support@prosperouscooperative.com or call +234 808 955 8312. We'll help secure your account and investigate any suspicious activities.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>How is my personal information used?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Your information is used to manage your account, process transactions, comply with regulations, and improve our services. Please refer to our Privacy Policy for detailed information.
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Support -->
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="fas fa-headset text-purple-600"></i> Technical Support
+            </h3>
+            
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What should I do if I can't log in?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Try resetting your password using the "Forgot Password" option. If this doesn't work, clear your browser cache or try a different browser. Contact support if the issue persists.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Does the app work on mobile devices?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    Yes, our platform is fully responsive and works on all mobile devices. You can also save it as a web app for easier access. No separate app download is required.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>What browsers are supported?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    We support all modern browsers including Chrome, Firefox, Safari, and Edge. For the best experience, please use the latest version of your browser.
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Support -->
+        <div class="bg-blue-50 p-6 rounded-lg border border-blue-200 mt-8">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Still need help?</h3>
+            <p class="text-gray-700 mb-4">Our support team is available 24/7 to assist you with any questions or issues.</p>
+            <div class="space-y-2">
+                <p class="text-gray-800"><strong>📧 Email:</strong> <a href="mailto:support@prosperouscooperative.com" class="text-blue-600 hover:underline">support@prosperouscooperative.com</a></p>
+                <p class="text-gray-800"><strong>📞 Phone:</strong> <a href="tel:+2348089558312" class="text-blue-600 hover:underline">+234 808 955 8312</a></p>
+                <p class="text-gray-800"><strong>🕐 Available:</strong> 24/7</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const ThemeManager = {
+        STORAGE_KEY: 'theme_preference',
+        init() {
+            const saved = localStorage.getItem(this.STORAGE_KEY) || 'light';
+            if (saved === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+        },
+        toggle() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem(this.STORAGE_KEY, isDark ? 'dark' : 'light');
+        }
+    };
+
+    function toggleTheme() {
+        ThemeManager.toggle();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        ThemeManager.init();
+
+        // FAQ Accordion functionality
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const faqItem = question.closest('.faq-item');
+                const isActive = faqItem.classList.contains('active');
+                
+                // Close all items
+                document.querySelectorAll('.faq-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Open clicked item if it was closed
+                if (!isActive) {
+                    faqItem.classList.add('active');
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

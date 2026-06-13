@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="logo.png">
+    <title>MINI BOOK - Contribution Management</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css.css">
+    
+    <!-- Favicon (prevents 404 error) -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, onSnapshot, addDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDQY_NSthcHARv0S9rkAAikP0leF9Kl29k",
+        authDomain: "contribution-c5309.firebaseapp.com",
+        projectId: "contribution-c5309",
+        messagingSenderId: "800641687170",
+        appId: "1:800641687170:web:36e0e50bdd8cf39844de9b",
+        measurementId: "G-DTJGZE3JEP"
+    };
+
+window.onload = initializeFirebase;
+
+const appId = "default-app-id";
+let app, auth, db;
+let userId = null;
+let userName = "";
+let userEmail = "";
+let userBooks = [];
+let selectedBook = "";
+let selectedMonth = "";
+// --- Audit Logging (writes to shared auditLogs collection so admin can see staff actions) ---
+async function logAuditAction(action, contributorId, contributorName, details) {
+    try {
+        const timestamp = new Date();
+        const auditEntry = {
+            action,
+            contributorId,
+            contributorName,
+            staffUser: userName || userEmail || 'Staff',
+            timestamp: timestamp.toISOString(),
+            details: details || {},
+            formattedTime: timestamp.toLocaleString('en-NG', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            })
+        };
+        const auditRef = collection(db, `artifacts/${appId}/users/${userId}/auditLogs`);
+        await addDoc(auditRef, auditEntry);
+    } catch (err) {
+        console.error('Failed to log audit action:', err);
+    }
+}
+
+let maxDayColumns = 0;
+let allContributors = [];
+
+// ===== LOCALSTORAGE CACHE MANAGER =====
+const CacheManager = {
+    CACHE_KEYS: {
+        USER_DATA: 'user_data',
+        CONTRIBUTORS: 'contributors_',
+        CACHE_TIMESTAMP: 'cache_timestamp_',
+        LAST_SYNC: 'last_sync_'
+    },
+    CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
+
+    setUserData(userData) {
+        localStorage.setItem(this.CACHE_KEYS.USER_DATA, JSON.stringify(userData));
+        localStorage.setItem(`${this.CACHE_KEYS.CACHE_TIMESTAMP}user`, Date.now());
+    },
+
+    getUserData() {
+        const data = localStorage.getItem(this.CACHE_KEYS.USER_DATA);
+        return data ? JSON.parse(data) : null;
+    },
+
+    setContributors(book, contributors) {
+        const key = `${this.CACHE_KEYS.CONTRIBUTORS}${book}`;
+        localStorage.setItem(key, JSON.stringify(contributors));
+        localStorage.setItem(`${this.CACHE_KEYS.CACHE_TIMESTAMP}${book}`, Date.now());
+    },
+
+    getContributors(book) {
+        const key = `${this.CACHE_KEYS.CONTRIBUTORS}${book}`;
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+    },
+
+    isCacheValid(book) {
+        const timestamp = localStorage.getItem(`${this.CACHE_KEYS.CACHE_TIMESTAMP}${book}`);
+        if (!timestamp) return false;
+        return Date.now() - parseInt(timestamp) < this.CACHE_DURATION;
+    },
+
+    clearContributorCache(book) {
+        const key = `${this.CACHE_KEYS.CONTRIBUTORS}${book}`;
+        localStorage.removeItem(key);
+        localStorage.removeItem(`${this.CACHE_KEYS.CACHE_TIMESTAMP}${book}`);
+    },
+
+    clearAllCache() {
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith(this.CACHE_KEYS.CONTRIBUTORS) || 
+                key.startsWith(this.CACHE_KEYS.CACHE_TIMESTAMP)) {
+                localStorage.removeItem(key);
+            }
+        });
+    }
+};
+
+const loadingContainer = document.getElementById('loading-container');
+const appContainer = document.getElementById('app-container');
+const userNameDisplay = document.getElementById('user-name-display');
+const userEmailDisplay = document.getElementById('user-email-display');
+const userAvatarDisplay = document.getElementById('user-avatar-display');
+const bookSelector = document.getElementById('book-selector');
+const contributorTableBody = document.getElementById('contributor-table');
+const tableContainer = document.getElementById('table-container');
+const showModalBtn = document.getElementById('show-modal-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const showDailyIconsBtn = document.getElementById('show-daily-icons-btn');
+const showExpensesBtn = document.getElementById('show-expenses-btn');
+const searchMonth = document.getElementById('search-month');
+const searchInput = document.getElementById('search-input');
+const customInputModal = document.getElementById('custom-input-modal');
+const customInputModalTitle = document.getElementById('custom-input-modal-title');
+const customInputModalInput = document.getElementById('custom-input-modal-input');
+const customInputModalDate = document.getElementById('custom-input-modal-date');
+const customInputModalReason = document.getElementById('custom-input-modal-reason');
+const customInputModalBtn = document.getElementById('custom-input-modal-btn');
+const messageModal = document.getElementById('message-modal');
+const messageModalText = document.getElementById('message-modal-text');
+const messageModalTitle = document.getElementById('message-modal-title');
+const confirmationModal = document.getElementById('confirmation-modal');
+const confirmationModalTitle = document.getElementById('confirmation-modal-title');
+const confirmationModalText = document.getElementById('confirmation-modal-text');
+const confirmationModalYesBtn = document.getElementById('confirmation-modal-yes');
+const confirmationModalNoBtn = document.getElementById('confirmation-modal-no');
+const historyModal = document.getElementById('history-modal');
+const historyModalText = document.getElementById('history-modal-text');
+const dailyIconsModal = document.getElementById('daily-icons-modal');
+const dailyIconsModalText = document.getElementById('daily-icons-modal-text');
+const expensesModal = document.getElementById('expenses-modal');
+const expensesModalText = document.getElementById('expenses-modal-text');
+const contributorModal = document.getElementById('contributor-modal');
+const editModal = document.getElementById('edit-modal');
+const regAmountModal = document.getElementById('reg-amount-modal');
+
+// NEW: Pagination state
+let currentPage = 1;
+const itemsPerPage = 10;
+let filteredContributorsCache = []; // To hold filtered list for pagination
+
+function getCurrentDateStr() {
+    const d = new Date();
+    return d.toLocaleDateString('en-NG', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function formatDateForInput(dateStr) {
+    if (!dateStr) return '';
+    try {
+        let parts;
+        if (dateStr.includes('/')) {
+            parts = dateStr.split('/');
+            if (parts.length === 3 && parts[2].length === 4) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        } else if (dateStr.includes('-')) {
+            const date = new Date(dateStr);
+            return date.toISOString().split('T')[0];
+        }
+        const date = new Date(dateStr);
+        return date.toISOString().split('T')[0];
+    } catch (e) {
+        return '';
+    }
+}
+
+function convertToDisplayFormat(isoDate) {
+    if (!isoDate) return '';
+    try {
+        const date = new Date(isoDate + 'T00:00:00Z');
+        const day = String(date.getUTCDate()).padStart(2, '0');
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+    } catch (e) {
+        return isoDate;
+    }
+}
+
+function dateToComparable(dateStr) {
+    try {
+        if (dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+        const date = new Date(dateStr);
+        return date.toISOString().split('T')[0];
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+function groupByDate(transactions) {
+    const grouped = {};
+    transactions.forEach(t => {
+        const comparable = dateToComparable(t.date);
+        if (!grouped[comparable]) {
+            grouped[comparable] = { date: t.date, items: [], total: 0 };
+        }
+        grouped[comparable].items.push(t);
+        grouped[comparable].total += t.amount;
+    });
+    return Object.values(grouped).sort((a, b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
+}
+
+function getUserInitials(name, email) {
+    if (name) {
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    } else if (email) {
+        return email[0].toUpperCase();
+    }
+    return '?';
+}
+
+async function initializeFirebase() {
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            console.log('Auth state changed:', user);
+            if (user) {
+                userId = user.uid;
+                userEmail = user.email || "";
+                
+                // Try to get user data from cache first
+                let cachedUserData = CacheManager.getUserData();
+                if (cachedUserData && cachedUserData.uid === userId) {
+                    userName = cachedUserData.name || "";
+                    userBooks = cachedUserData.books || [];
+                    loadUserUI();
+                }
+
+                // Always fetch fresh user data from Firebase
+                const userDocRef = doc(db, "users", userId);
+                const userDocSnap = await getDoc(userDocRef);
+                
+                if (userDocSnap.exists()) {
+                    userName = userDocSnap.data().name || "";
+                    userBooks = userDocSnap.data().books || [];
+                    CacheManager.setUserData({
+                        uid: userId,
+                        email: userEmail,
+                        name: userName,
+                        books: userBooks
+                    });
+                }
+                
+                if (userBooks.length === 0) {
+                    showMessage('Warning', 'Please select books from login page.');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                    return;
+                }
+                
+                selectedBook = userBooks[0];
+                loadUserUI();
+                setupFirestoreListener();
+            } else {
+                userId = null;
+                userName = "";
+                userEmail = "";
+                userBooks = [];
+                CacheManager.clearAllCache();
+                sessionStorage.removeItem('user');
+                console.log('User not authenticated, redirecting to login.html');
+                window.location.href = 'login.html';
+            }
+        });
+    } catch (error) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'text-red-500 text-center font-bold';
+        errorDiv.textContent = `Failed to initialize the application: ${error.message}`;
+        appContainer.innerHTML = '';
+        appContainer.appendChild(errorDiv);
+        appContainer.classList.remove('hidden');
+    }
+}
+
+function loadUserUI() {
+    const initials = getUserInitials(userName, userEmail);
+    userNameDisplay.textContent = userName || 'User';
+    userEmailDisplay.textContent = userEmail;
+    userAvatarDisplay.textContent = initials;
+    
+    initializeBookSelector();
+    
+    loadingContainer.classList.add('hidden');
+    appContainer.classList.remove('hidden');
+}
+
+function initializeBookSelector() {
+    bookSelector.innerHTML = '';
+    userBooks.forEach(book => {
+        const option = document.createElement('option');
+        option.value = book;
+        option.textContent = book;
+        bookSelector.appendChild(option);
+    });
+    bookSelector.value = selectedBook;
+    
+    bookSelector.addEventListener('change', (e) => {
+        selectedBook = e.target.value;
+        console.log('Selected book:', selectedBook);
+        currentPage = 1; // Reset pagination
+        setupFirestoreListener();
+    });
+}
+
+function showMessage(title, text) {
+    messageModalTitle.textContent = title;
+    messageModalText.textContent = text;
+    messageModal.classList.remove('hidden');
+    setTimeout(() => {
+        messageModal.classList.add('hidden');
+    }, 3000);
+}
+
+function clearModalInputs() {
+    customInputModalInput.value = '';
+    customInputModalDate.value = '';
+    customInputModalReason.innerHTML = '<input type="text" id="custom-input-modal-reason" placeholder="Reason for correction (optional)" class="border px-4 py-2 rounded-lg w-full" />';
+}
+
+function createReasonDropdown() {
+    const select = document.createElement('select');
+    select.id = 'custom-input-modal-reason';
+    select.className = 'border px-4 py-2 rounded-lg w-full';
+    select.innerHTML = `
+        <option value="">Select withdrawal type</option>
+        <option value="Office Withdraw">Office Withdraw</option>
+        <option value="Outside Withdraw">Outside Withdraw</option>
+    `;
+    return select;
+}
+
+function createReasonInput() {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'custom-input-modal-reason';
+    input.placeholder = 'Reason for correction (optional)';
+    input.className = 'border px-4 py-2 rounded-lg w-full';
+    return input;
+}
+
+function showInputModal(title, placeholder, buttonText, callback, defaultAmount = '', defaultDate = '', isWithdraw = false) {
+    customInputModalTitle.textContent = title;
+    customInputModalInput.placeholder = placeholder;
+    customInputModalInput.value = defaultAmount;
+    customInputModalDate.value = defaultDate || formatDateForInput(getCurrentDateStr());
+    customInputModalBtn.textContent = buttonText;
+
+    const reasonContainer = document.getElementById('reason-container');
+    reasonContainer.innerHTML = '';
+    
+    if (isWithdraw) {
+        reasonContainer.appendChild(createReasonDropdown());
+    } else {
+        reasonContainer.appendChild(createReasonInput());
+    }
+
+    customInputModal.classList.remove('hidden');
+    
+    const submitHandler = () => {
+        const amount = parseFloat(customInputModalInput.value);
+        const selectedDate = customInputModalDate.value;
+        const reason = document.getElementById('custom-input-modal-reason').value.trim() || 'No reason provided';
+        
+        if (isNaN(amount) || amount <= 0) {
+            showMessage('Error', 'Please enter a valid positive number.');
+            return;
+        }
+        if (!selectedDate) {
+            showMessage('Error', 'Please select a valid date.');
+            return;
+        }
+        if (isWithdraw && !reason) {
+            showMessage('Error', 'Please select a withdrawal type.');
+            return;
+        }
+        
+        callback(amount, selectedDate, reason);
+        customInputModal.classList.add('hidden');
+        clearModalInputs();
+        customInputModalBtn.removeEventListener('click', submitHandler);
+    };
+    
+    customInputModalBtn.addEventListener('click', submitHandler);
+}
+
+function showHistoryModal(contributor) {
+    const history = contributor.correctionHistory || [];
+    const withdrawals = contributor.withdrawals || [];
+
+    const actionConfig = {
+        'WITHDRAWAL': { icon: '💸', label: 'Withdrawal', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+        'WITHDRAWAL_DELETE': { icon: '🗑️💸', label: 'Withdrawal Deleted', color: '#ea580c', bg: '#fff7ed', border: '#fdba74' },
+        'EDIT': { icon: '✏️', label: 'Contributor Edited', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+        'CORRECTION': { icon: '🔧', label: 'Deposit Corrected', color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd' },
+        'LEGACY': { icon: '📝', label: 'Deposit Change', color: '#374151', bg: '#f9fafb', border: '#d1d5db' },
+    };
+
+    const rows = history.length === 0 && withdrawals.length === 0
+        ? '<p style="color:#6b7280;padding:12px 0;">No history recorded yet for this contributor.</p>'
+        : [...history]
+            .sort((a, b) => {
+                const ta = a.timestamp ? new Date(a.timestamp) : new Date(0);
+                const tb = b.timestamp ? new Date(b.timestamp) : new Date(0);
+                return tb - ta;
+            })
+            .map(h => {
+                const cfg = actionConfig[h.type] || actionConfig['LEGACY'];
+                const formattedTime = h.timestamp
+                    ? new Date(h.timestamp).toLocaleString('en-NG', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+                    : h.date || '—';
+                const amountChange = (h.oldAmount !== undefined && h.newAmount !== undefined)
+                    ? `<span style="color:#6b7280;font-size:12px;">₦${Number(h.oldAmount).toFixed(2)} → <strong style="color:${cfg.color};">₦${Number(h.newAmount).toFixed(2)}</strong></span>`
+                    : '';
+                const staffLine = h.staff ? `<span style="font-size:11px;color:#9ca3af;">👤 ${h.staff}</span>` : '';
+                return `
+                    <div style="border:1px solid ${cfg.border};background:${cfg.bg};border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
+                            <span style="font-weight:700;color:${cfg.color};font-size:13px;">${cfg.icon} ${cfg.label}</span>
+                            <span style="font-size:11px;color:#6b7280;">${formattedTime}</span>
+                        </div>
+                        ${amountChange ? `<div style="margin-bottom:3px;">${amountChange}</div>` : ''}
+                        <div style="font-size:12px;color:#374151;">📋 ${h.reason || '—'}</div>
+                        ${staffLine ? `<div style="margin-top:3px;">${staffLine}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+    historyModalText.innerHTML = `
+        <div style="margin-bottom:12px;">
+            <p style="font-weight:700;font-size:14px;color:#374151;">📊 ${contributor.name} — Complete Action History</p>
+            <p style="font-size:12px;color:#6b7280;">${history.length} record(s) found</p>
+        </div>
+        <div style="max-height:55vh;overflow-y:auto;">
+            ${rows}
+        </div>
+    `;
+    historyModal.classList.remove('hidden');
+}
+
+function showRegAmountModal(contributors) {
+    let html = `
+        <div class="mb-4">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">📊 All Registration Amounts</h3>
+            <table class="w-full border-collapse text-sm">
+                <thead class="bg-blue-100">
+                    <tr>
+                        <th class="border px-4 py-2 text-left">Reg No</th>
+                        <th class="border px-4 py-2 text-left">Name</th>
+                        <th class="border px-4 py-2 text-right">Reg Amount (₦)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${contributors.map(c => `
+                        <tr>
+                            <td class="border px-4 py-2">${c.regNo || '—'}</td>
+                            <td class="border px-4 py-2">${c.name || '—'}</td>
+                            <td class="border px-4 py-2 text-right font-semibold">₦${(c.regAmount || 0).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p class="text-sm"><strong>Total Contributors:</strong> ${contributors.length}</p>
+                <p class="text-sm"><strong>Total Registration Amount:</strong> ₦${contributors.reduce((sum, c) => sum + (c.regAmount || 0), 0).toFixed(2)}</p>
+                <p class="text-sm"><strong>Average Registration Amount:</strong> ₦${(contributors.reduce((sum, c) => sum + (c.regAmount || 0), 0) / contributors.length || 0).toFixed(2)}</p>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('reg-amount-modal-text').innerHTML = html;
+    regAmountModal.classList.remove('hidden');
+}
+
+function showConfirmationModal(title, text, onConfirm) {
+    confirmationModalTitle.textContent = title;
+    confirmationModalText.textContent = text;
+    confirmationModal.classList.remove('hidden');
+    const handleYes = () => {
+        onConfirm();
+        confirmationModal.classList.add('hidden');
+        confirmationModalYesBtn.removeEventListener('click', handleYes);
+        confirmationModalNoBtn.removeEventListener('click', handleNo);
+    };
+    const handleNo = () => {
+        confirmationModal.classList.add('hidden');
+        confirmationModalYesBtn.removeEventListener('click', handleYes);
+        confirmationModalNoBtn.removeEventListener('click', handleNo);
+    };
+    confirmationModalYesBtn.addEventListener('click', handleYes);
+    confirmationModalNoBtn.addEventListener('click', handleNo);
+}
+
+// NEW: Pagination functions
+function getPaginatedContributors(filtered) {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filtered.slice(start, end);
+}
+
+function renderPagination(filteredCount) {
+    const totalPages = Math.ceil(filteredCount / itemsPerPage);
+    let paginationHTML = `
+        <div class="flex justify-between items-center mt-4 px-4">
+            <div class="text-sm text-gray-600">
+                Showing ${(currentPage - 1) * itemsPerPage + 1} to ${Math.min(currentPage * itemsPerPage, filteredCount)} of ${filteredCount} contributors
+            </div>
+            <div class="flex gap-2">
+                <button onclick="prevPage()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                <button onclick="nextPage()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+        </div>
+    `;
+    // Append pagination after table if not exists
+    let paginationDiv = document.getElementById('pagination-controls');
+    if (!paginationDiv) {
+        paginationDiv = document.createElement('div');
+        paginationDiv.id = 'pagination-controls';
+        tableContainer.appendChild(paginationDiv);
+    }
+    paginationDiv.innerHTML = paginationHTML;
+}
+
+window.prevPage = function() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTable(getPaginatedContributors(filteredContributorsCache));
+        renderPagination(filteredContributorsCache.length);
+    }
+};
+
+window.nextPage = function() {
+    const totalPages = Math.ceil(filteredContributorsCache.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderTable(getPaginatedContributors(filteredContributorsCache));
+        renderPagination(filteredContributorsCache.length);
+    }
+};
+
+function renderTable(contributors) {
+    const seen = new Set();
+    const uniqueContributors = contributors.filter(c => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+    });
+    
+    contributorTableBody.innerHTML = '';
+    const allDaysTicked = uniqueContributors.map(c => c.tickDates.length);
+    const newMaxDays = Math.min(31, Math.max(...allDaysTicked, 0));
+    if (newMaxDays > maxDayColumns) {
+        maxDayColumns = newMaxDays;
+        updateHeaderDays(maxDayColumns);
+    }
+    uniqueContributors.forEach(contributor => {
+        const withdrawals = contributor.withdrawals || [];
+        const tickDates = contributor.tickDates || [];
+        const isLowDeposit = contributor.deposit < contributor.regAmount;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="border px-4 py-2">${contributor.name || ''}</td>
+            <td class="border px-4 py-2">${contributor.regNo || ''}</td>
+            <td class="border px-4 py-2">${contributor.date || ''}</td>
+            <td class="border px-4 py-2">${contributor.book || selectedBook || '—'}</td>
+            <td class="border px-4 py-2 reg-amt">₦${(contributor.regAmount || 0).toFixed(2)}</td>
+            <td class="border px-4 py-2">
+                <div class="font-semibold ${isLowDeposit ? 'text-red-500' : ''}">₦${(contributor.deposit || 0).toFixed(2)}</div>
+                ${isLowDeposit ? '<div class="text-xs text-red-500">Low deposit warning</div>' : ''}
+                <div class="flex flex-wrap space-x-1 mt-1 actions-cell">
+                    <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded dropdown-btn" data-id="${contributor.id}" data-toggle="dropdown-${contributor.id}">
+                        ⋮ Actions
+                    </button>
+                    <div id="dropdown-${contributor.id}" class="dropdown-menu hidden">
+                        <button class="add-btn" data-id="${contributor.id}">+ Add Income</button>
+                        <button class="withdraw-btn" data-id="${contributor.id}">- Withdraw</button>
+                        <button class="edit-btn" data-id="${contributor.id}">✏️ Edit</button>
+                        <button class="history-btn" data-id="${contributor.id}">📋 History</button>
+                    </div>
+                </div>
+            </td>
+            ${renderWithdrawalCells(withdrawals, contributor.id)}
+            <td class="border px-4 py-2">${tickDates.length}</td>
+            ${generateCheckboxes(tickDates, maxDayColumns)}
+        `;
+        contributorTableBody.appendChild(row);
+    });
+    bindButtonListeners();
+    bindDropdownListeners();
+}
+
+function renderWithdrawalCells(withdrawals, contributorId) {
+    let html = '';
+    for (let i = 0; i < 4; i++) {
+        const withdrawal = withdrawals[i];
+        html += `
+            <td class="border px-4 py-2 withdrawal-${i + 1}">
+                ${withdrawal ? `
+                    <div class="withdrawal-item">
+                        <div class="withdrawal-info">
+                            <div>₦${withdrawal.amount.toFixed(2)}</div>
+                            <div class="text-xs text-gray-500">${withdrawal.date}</div>
+                            <div class="text-xs text-gray-400">(${withdrawal.reason || '—'})</div>
+                        </div>
+                        <button class="delete-withdrawal-btn" data-contributor-id="${contributorId}" data-withdrawal-index="${i}" title="Delete this withdrawal">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                ` : ''}
+            </td>
+        `;
+    }
+    return html;
+}
+
+function updateHeaderDays(newMaxDays) {
+    const headerRow = document.getElementById('table-header-row');
+    while (headerRow.children.length > 11) headerRow.removeChild(headerRow.lastChild);
+    for (let i = 1; i <= newMaxDays; i++) {
+        const th = document.createElement('th');
+        th.className = "border px-2 py-1 text-center min-w-[50px] bg-green-100";
+        th.textContent = `Position ${i}`;
+        headerRow.appendChild(th);
+    }
+}
+
+function generateCheckboxes(tickDates, totalDays) {
+    return Array.from({ length: totalDays }, (_, i) => {
+        const hasTick = tickDates[i] !== undefined;
+        const dateText = typeof tickDates[i] === 'string' ? tickDates[i] : '';
+        return `
+            <td class="border px-2 py-1 text-center">
+                <input type="checkbox" disabled ${hasTick ? 'checked' : ''} />
+                ${dateText ? `<div class="text-xs text-green-500">${dateText}</div>` : ''}
+            </td>
+        `;
+    }).join('');
+}
+
+function bindButtonListeners() {
+    document.querySelectorAll('.add-btn, .withdraw-btn, .correct-btn, .history-btn, .edit-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const contributorId = e.target.getAttribute('data-id');
+            const contributor = allContributors.find(c => c.id === contributorId);
+            if (!contributor) {
+                showMessage('Error', 'Contributor not found.');
+                return;
+            }
+            if (e.target.classList.contains('add-btn')) {
+                showInputModal('+ Add Income', 'Enter amount to add', 'Add', (amount, selectedDate, reason) => {
+                    const newDeposit = contributor.deposit + amount;
+                    const newTotalIncome = (contributor.totalIncome || contributor.deposit) + amount;
+                    const totalTicks = Math.floor(newTotalIncome / contributor.regAmount);
+                    if (totalTicks > 31) {
+                        showMessage('Error', 'Adding this amount would exceed the maximum of 31 ticks.');
+                        return;
+                    }
+                    const prevTicks = contributor.tickDates.length;
+                    const additionalTicks = totalTicks - prevTicks;
+                    let newTickDates = [...contributor.tickDates];
+                    const dateStr = convertToDisplayFormat(selectedDate);
+                    for (let i = prevTicks; i < prevTicks + additionalTicks; i++) {
+                        newTickDates[i] = dateStr;
+                    }
+                    newTickDates = newTickDates
+                        .map((date, index) => ({ date, index }))
+                        .sort((a, b) => new Date(dateToComparable(a.date)) - new Date(dateToComparable(b.date)))
+                        .map(item => item.date);
+                    
+                    const incomeHistory = contributor.incomeHistory || [];
+                    const newIncomeHistory = [
+                        ...incomeHistory,
+                        {
+                            date: dateStr,
+                            amount: amount,
+                            reason: reason || 'Income added'
+                        }
+                    ];
+
+                    updateContributor(contributorId, {
+                        deposit: newDeposit,
+                        totalIncome: newTotalIncome,
+                        tickDates: newTickDates,
+                        incomeHistory: newIncomeHistory
+                    });
+                }, '', '', false);
+            } else if (e.target.classList.contains('withdraw-btn')) {
+                showInputModal('- Withdraw Amount', 'Enter amount to withdraw', 'Withdraw', (amount, selectedDate, reason) => {
+                    if (amount > contributor.deposit) {
+                        showMessage('Error', 'Withdrawal amount cannot be greater than current deposit.');
+                        return;
+                    }
+                    const withdrawals = contributor.withdrawals;
+                    if (withdrawals.length >= 4) {
+                        showMessage('Error', 'Maximum of 4 withdrawals reached.');
+                        return;
+                    }
+                    const newDeposit = contributor.deposit - amount;
+                    const dateStr = convertToDisplayFormat(selectedDate);
+                    const newWithdrawals = [...withdrawals, { amount, date: dateStr, reason }];
+                    const newCorrectionHistory = [
+                        ...(contributor.correctionHistory || []),
+                        {
+                            type: 'WITHDRAWAL',
+                            oldAmount: contributor.deposit,
+                            newAmount: newDeposit,
+                            date: dateStr,
+                            reason: `Withdrawal — ${reason || 'No reason provided'}`,
+                            staff: userName || userEmail || 'Staff',
+                            timestamp: new Date().toISOString()
+                        }
+                    ];
+                    updateContributor(contributorId, {
+                        deposit: newDeposit,
+                        withdrawals: newWithdrawals,
+                        correctionHistory: newCorrectionHistory
+                    });
+                    logAuditAction('WITHDRAWAL', contributorId, contributor.name, {
+                        amount,
+                        withdrawalDate: dateStr,
+                        reason: reason || ''
+                    });
+                }, '', '', true);
+            } else if (e.target.classList.contains('correct-btn')) {
+                showInputModal('Correct Deposit', 'Enter corrected deposit amount', 'Correct', (correctedDeposit, selectedDate, reason) => {
+                    if (correctedDeposit < 0) {
+                        showMessage('Error', 'Corrected deposit cannot be negative.');
+                        return;
+                    }
+                    const withdrawalTotal = contributor.withdrawals.reduce((sum, w) => sum + w.amount, 0);
+                    if (correctedDeposit < withdrawalTotal) {
+                        showMessage('Error', 'Corrected deposit cannot be less than total withdrawals.');
+                        return;
+                    }
+                    const newTotalIncome = correctedDeposit + withdrawalTotal;
+                    const totalTicks = Math.floor(newTotalIncome / contributor.regAmount);
+                    if (totalTicks > 31) {
+                        showMessage('Error', 'Corrected deposit would result in more than 31 ticks.');
+                        return;
+                    }
+                    let newTickDates = [];
+                    const dateStr = convertToDisplayFormat(selectedDate);
+                    for (let i = 0; i < totalTicks; i++) {
+                        newTickDates[i] = dateStr;
+                    }
+                    const newCorrectionHistory = [
+                        ...contributor.correctionHistory,
+                        {
+                            type: 'CORRECTION',
+                            oldAmount: contributor.deposit,
+                            newAmount: correctedDeposit,
+                            date: dateStr,
+                            reason,
+                            staff: userName || userEmail || 'Staff',
+                            timestamp: new Date().toISOString()
+                        }
+                    ];
+                    updateContributor(contributorId, {
+                        deposit: correctedDeposit,
+                        totalIncome: newTotalIncome,
+                        tickDates: newTickDates,
+                        correctionHistory: newCorrectionHistory
+                    });
+                }, contributor.deposit.toFixed(2), formatDateForInput(dateToComparable(contributor.tickDates[contributor.tickDates.length - 1] || getCurrentDateStr())), false);
+            } else if (e.target.classList.contains('history-btn')) {
+                showHistoryModal(contributor);
+            } else if (e.target.classList.contains('edit-btn')) {
+                document.getElementById('edit-name').value = contributor.name;
+                document.getElementById('edit-reg-no').value = contributor.regNo;
+                document.getElementById('edit-date').value = formatDateForInput(dateToComparable(contributor.date || getCurrentDateStr()));
+                document.getElementById('edit-reg-amount').value = contributor.regAmount.toFixed(2);
+                document.getElementById('edit-deposit').value = contributor.deposit.toFixed(2);
+                
+                editModal.classList.remove('hidden');
+                
+                document.getElementById('edit-form').onsubmit = async (submitEvent) => {
+                    submitEvent.preventDefault();
+                    
+                    const name = document.getElementById('edit-name').value;
+                    const regNo = document.getElementById('edit-reg-no').value;
+                    const date = document.getElementById('edit-date').value;
+                    const regAmount = parseFloat(document.getElementById('edit-reg-amount').value);
+                    const deposit = parseFloat(document.getElementById('edit-deposit').value);
+                    
+                    if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
+                        showMessage('Error', 'Please enter valid positive numbers.');
+                        return;
+                    }
+                    
+                    if (!date) {
+                        showMessage('Error', 'Please select a valid date.');
+                        return;
+                    }
+                    
+                    const totalTicks = Math.floor(deposit / regAmount);
+                    if (totalTicks > 31) {
+                        showMessage('Error', 'Deposit would result in more than 31 ticks.');
+                        return;
+                    }
+                    
+                    let newTickDates = [];
+                    const dateStr = convertToDisplayFormat(date);
+                    for (let i = 0; i < totalTicks; i++) {
+                        newTickDates[i] = dateStr;
+                    }
+                    
+                    const newCorrectionHistory = [
+                        ...contributor.correctionHistory,
+                        {
+                            type: 'EDIT',
+                            oldAmount: contributor.deposit,
+                            newAmount: deposit,
+                            date: dateStr,
+                            reason: 'Edited contributor details',
+                            staff: userName || userEmail || 'Staff',
+                            timestamp: new Date().toISOString()
+                        }
+                    ];
+                    
+                    try {
+                        document.getElementById('edit-form').querySelector('button').disabled = true;
+                        document.getElementById('edit-form').querySelector('button').textContent = 'Updating...';
+                        
+                        await updateContributor(contributorId, {
+                            name,
+                            regNo,
+                            date: dateStr,
+                            regAmount,
+                            deposit,
+                            totalIncome: deposit,
+                            tickDates: newTickDates,
+                            correctionHistory: newCorrectionHistory
+                        });
+                        logAuditAction('EDIT', contributorId, contributor.name, {
+                            oldAmount: contributor.deposit,
+                            newAmount: deposit,
+                            reason: 'Staff edited contributor details'
+                        });
+                        
+                        editModal.classList.add('hidden');
+                    } catch (error) {
+                        showMessage('Error', `Failed to update: ${error.message}`);
+                    } finally {
+                        document.getElementById('edit-form').querySelector('button').disabled = false;
+                        document.getElementById('edit-form').querySelector('button').textContent = 'Update Entry';
+                    }
+                };
+            }
+        });
+    });
+
+    // Delete Withdrawal Button Listener
+    document.querySelectorAll('.delete-withdrawal-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const contributorId = e.currentTarget.getAttribute('data-contributor-id');
+            const withdrawalIndex = parseInt(e.currentTarget.getAttribute('data-withdrawal-index'));
+            const contributor = allContributors.find(c => c.id === contributorId);
+            
+            if (!contributor) {
+                showMessage('Error', 'Contributor not found.');
+                return;
+            }
+
+            const withdrawal = contributor.withdrawals[withdrawalIndex];
+            if (!withdrawal) {
+                showMessage('Error', 'Withdrawal not found.');
+                return;
+            }
+
+            showConfirmationModal(
+                'Delete Withdrawal',
+                `Are you sure you want to delete the withdrawal of ₦${withdrawal.amount.toFixed(2)} on ${withdrawal.date}?`,
+                () => {
+                    const newWithdrawals = contributor.withdrawals.filter((_, idx) => idx !== withdrawalIndex);
+                    const newDeposit = contributor.deposit + withdrawal.amount;
+                    const todayStr = convertToDisplayFormat(new Date().toISOString().split('T')[0]);
+                    const newCorrectionHistory = [
+                        ...(contributor.correctionHistory || []),
+                        {
+                            type: 'WITHDRAWAL_DELETE',
+                            oldAmount: contributor.deposit,
+                            newAmount: newDeposit,
+                            date: todayStr,
+                            reason: `Deleted withdrawal of ₦${withdrawal.amount.toFixed(2)} originally on ${withdrawal.date}`,
+                            staff: userName || userEmail || 'Staff',
+                            timestamp: new Date().toISOString()
+                        }
+                    ];
+                    updateContributor(contributorId, {
+                        withdrawals: newWithdrawals,
+                        deposit: newDeposit,
+                        correctionHistory: newCorrectionHistory
+                    });
+                    logAuditAction('WITHDRAWAL_DELETE', contributorId, contributor.name, {
+                        deletedAmount: withdrawal.amount,
+                        withdrawalDate: withdrawal.date,
+                        reason: withdrawal.reason || ''
+                    });
+                }
+            );
+        });
+    });
+}
+
+function positionDropdown(button, dropdown) {
+    const buttonRect = button.getBoundingClientRect();
+    const dropdownHeight = dropdown.offsetHeight || 150;
+    const dropdownWidth = dropdown.offsetWidth || 160;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const spaceBelow = viewportHeight - buttonRect.bottom;
+    const spaceAbove = buttonRect.top;
+
+    let top, left;
+
+    left = Math.min(buttonRect.right - dropdownWidth, viewportWidth - dropdownWidth - 10);
+    left = Math.max(left, 10);
+
+    if (spaceBelow >= dropdownHeight + 10) {
+        top = buttonRect.bottom + 5;
+    } else if (spaceAbove >= dropdownHeight + 10) {
+        top = buttonRect.top - dropdownHeight - 5;
+    } else {
+        top = buttonRect.bottom + 5;
+    }
+
+    dropdown.style.top = top + 'px';
+    dropdown.style.left = left + 'px';
+}
+
+function bindDropdownListeners() {
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.dropdown-btn') && !e.target.closest('.dropdown-menu')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+    });
+
+    document.querySelectorAll('.dropdown-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdownId = btn.getAttribute('data-toggle');
+            const dropdown = document.getElementById(dropdownId);
+            
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                if (menu.id !== dropdownId) {
+                    menu.classList.add('hidden');
+                }
+            });
+            
+            if (dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('hidden');
+                setTimeout(() => {
+                    positionDropdown(btn, dropdown);
+                }, 0);
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        });
+    });
+
+    window.addEventListener('scroll', () => {
+        document.querySelectorAll('.dropdown-menu.show:not(.hidden)').forEach(menu => {
+            const btn = document.querySelector(`[data-toggle="${menu.id}"]`);
+            if (btn) positionDropdown(btn, menu);
+        });
+    }, true);
+
+    window.addEventListener('resize', () => {
+        document.querySelectorAll('.dropdown-menu.show:not(.hidden)').forEach(menu => {
+            const btn = document.querySelector(`[data-toggle="${menu.id}"]`);
+            if (btn) positionDropdown(btn, menu);
+        });
+    });
+}
+
+showModalBtn.addEventListener('click', () => {
+    contributorModal.classList.remove('hidden');
+});
+
+document.getElementById('show-reg-amount-btn').addEventListener('click', () => {
+    if (allContributors.length === 0) {
+        showMessage('Info', 'No contributors available.');
+        return;
+    }
+    showRegAmountModal(allContributors);
+});
+
+showDailyIconsBtn.addEventListener('click', () => {
+    if (allContributors.length === 0) {
+        dailyIconsModalText.innerHTML = '<p>No contributors or transactions available.</p>';
+        dailyIconsModal.classList.remove('hidden');
+        return;
+    }
+
+    const incomes = [];
+    allContributors.forEach(c => {
+        if (c.totalIncome > 0) {
+            incomes.push({
+                date: c.tickDates[0] || getCurrentDateStr(), 
+                name: c.name, 
+                book: c.book || selectedBook || '—', 
+                amount: c.totalIncome, 
+                type: 'Total Income'
+            });
+        }
+        
+        (c.incomeHistory || []).forEach(h => {
+            incomes.push({
+                date: h.date, 
+                name: c.name, 
+                book: c.book || selectedBook || '—', 
+                amount: h.amount, 
+                type: 'Income Transaction'
+            });
+        });
+    });
+
+    incomes.sort((a,b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
+    const groupedByDate = groupByDate(incomes);
+
+    let html = `
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <h3 class="text-xl font-bold text-gray-800">Daily Income Statement</h3>
+            <div class="flex gap-2">
+                <input type="date" id="income-filter-date" class="border px-3 py-2 rounded-lg text-sm" placeholder="Filter by date" />
+                <button onclick="resetIncomeFilter()" class="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm">Reset</button>
+                <button onclick="downloadCSV('income')" class="bg-green-600 text-white px-5 py-2 rounded-lg">Download CSV</button>
+            </div>
+        </div>
+        <div id="income-statement-container">
+            ${groupedByDate.map(group => `
+                <div class="daily-total-box">
+                    <div class="flex justify-between items-center mb-2">
+                        <strong class="text-lg">📅 ${group.date}</strong>
+                        <span class="text-green-600 font-bold text-lg">₦${group.total.toFixed(2)}</span>
+                    </div>
+                    <table class="statement-table w-full border-collapse text-sm">
+                        <thead class="bg-green-100">
+                            <tr>
+                                <th>Contributor</th>
+                                <th>Book</th>
+                                <th class="text-right">Amount (₦)</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.items.map(item => `
+                                <tr>
+                                    <td>${item.name}</td>
+                                    <td>${item.book}</td>
+                                    <td class="text-right font-semibold text-green-600">₦${item.amount.toFixed(2)}</td>
+                                    <td>${item.type}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    dailyIconsModalText.innerHTML = html;
+    dailyIconsModal.classList.remove('hidden');
+
+    document.getElementById('income-filter-date').addEventListener('change', (e) => {
+        const selectedDate = e.target.value;
+        const filtered = selectedDate 
+            ? groupedByDate.filter(g => dateToComparable(g.date) === selectedDate)
+            : groupedByDate;
+        
+        let filteredHtml = filtered.map(group => `
+            <div class="daily-total-box">
+                <div class="flex justify-between items-center mb-2">
+                    <strong class="text-lg">📅 ${group.date}</strong>
+                    <span class="text-green-600 font-bold text-lg">₦${group.total.toFixed(2)}</span>
+                </div>
+                <table class="statement-table w-full border-collapse text-sm">
+                    <thead class="bg-green-100">
+                        <tr>
+                            <th>Contributor</th>
+                            <th>Book</th>
+                            <th class="text-right">Amount (₦)</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${group.items.map(item => `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.book}</td>
+                                <td class="text-right font-semibold text-green-600">₦${item.amount.toFixed(2)}</td>
+                                <td>${item.type}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `).join('');
+
+        document.getElementById('income-statement-container').innerHTML = filteredHtml || '<p class="text-gray-500">No transactions for this date.</p>';
+    });
+});
+
+showExpensesBtn.addEventListener('click', () => {
+    if (allContributors.length === 0) {
+        expensesModalText.innerHTML = '<p>No contributors or withdrawals available.</p>';
+        expensesModal.classList.remove('hidden');
+        return;
+    }
+
+    const payouts = [];
+    allContributors.forEach(c => {
+        (c.withdrawals || []).forEach(w => {
+            payouts.push({
+                date: w.date, 
+                name: c.name, 
+                book: c.book || selectedBook || '—', 
+                amount: w.amount, 
+                type: 'Withdrawal',
+                reason: w.reason || '—'
+            });
+        });
+    });
+
+    payouts.sort((a,b) => new Date(dateToComparable(b.date)) - new Date(dateToComparable(a.date)));
+    const groupedByDate = groupByDate(payouts);
+
+    let html = `
+        <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+            <h3 class="text-xl font-bold text-gray-800">Daily Payout Statement</h3>
+            <div class="flex gap-2">
+                <input type="date" id="payout-filter-date" class="border px-3 py-2 rounded-lg text-sm" placeholder="Filter by date" />
+                <button onclick="resetPayoutFilter()" class="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm">Reset</button>
+                <button onclick="downloadCSV('payout')" class="bg-green-600 text-white px-5 py-2 rounded-lg">Download CSV</button>
+            </div>
+        </div>
+        <div id="payout-statement-container">
+            ${groupedByDate.length > 0 ? groupedByDate.map(group => `
+                <div class="daily-total-box payout">
+                    <div class="flex justify-between items-center mb-2">
+                        <strong class="text-lg">📅 ${group.date}</strong>
+                        <span class="text-red-600 font-bold text-lg">-₦${group.total.toFixed(2)}</span>
+                    </div>
+                    <table class="statement-table w-full border-collapse text-sm">
+                        <thead class="bg-orange-100">
+                            <tr>
+                                <th>Contributor</th>
+                                <th>Book</th>
+                                <th class="text-right">Amount (₦)</th>
+                                <th>Type</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.items.map(item => `
+                                <tr>
+                                    <td>${item.name}</td>
+                                    <td>${item.book}</td>
+                                    <td class="text-right font-semibold text-red-600">-₦${item.amount.toFixed(2)}</td>
+                                    <td>${item.type}</td>
+                                    <td>${item.reason}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `).join('') : '<p class="text-gray-500">No withdrawals recorded.</p>'}
+        </div>
+    `;
+    
+    expensesModalText.innerHTML = html;
+    expensesModal.classList.remove('hidden');
+
+    document.getElementById('payout-filter-date').addEventListener('change', (e) => {
+        const selectedDate = e.target.value;
+        const filtered = selectedDate 
+            ? groupedByDate.filter(g => dateToComparable(g.date) === selectedDate)
+            : groupedByDate;
+        
+        let filteredHtml = filtered.length > 0 ? filtered.map(group => `
+            <div class="daily-total-box payout">
+                <div class="flex justify-between items-center mb-2">
+                    <strong class="text-lg">📅 ${group.date}</strong>
+                    <span class="text-red-600 font-bold text-lg">-₦${group.total.toFixed(2)}</span>
+                </div>
+                <table class="statement-table w-full border-collapse text-sm">
+                    <thead class="bg-orange-100">
+                        <tr>
+                            <th>Contributor</th>
+                            <th>Book</th>
+                            <th class="text-right">Amount (₦)</th>
+                            <th>Type</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${group.items.map(item => `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.book}</td>
+                                <td class="text-right font-semibold text-red-600">-₦${item.amount.toFixed(2)}</td>
+                                <td>${item.type}</td>
+                                <td>${item.reason}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `).join('') : '<p class="text-gray-500">No transactions for this date.</p>';
+
+        document.getElementById('payout-statement-container').innerHTML = filteredHtml;
+    });
+});
+
+window.resetIncomeFilter = function() {
+    const input = document.getElementById('income-filter-date');
+    if (input) input.value = '';
+    showDailyIconsBtn.click();
+};
+
+window.resetPayoutFilter = function() {
+    const input = document.getElementById('payout-filter-date');
+    if (input) input.value = '';
+    showExpensesBtn.click();
+};
+
+window.downloadCSV = function(type) {
+    const data = type === 'income' 
+        ? allContributors.flatMap(c => {
+            let arr = [];
+            if (c.totalIncome > 0) {
+                arr.push({
+                    date: c.tickDates[0] || getCurrentDateStr(), 
+                    name: c.name, 
+                    book: c.book || selectedBook || '—', 
+                    amount: c.totalIncome, 
+                    type: 'Total Income'
+                });
+            }
+            (c.incomeHistory || []).forEach(h => {
+                arr.push({
+                    date: h.date, 
+                    name: c.name, 
+                    book: c.book || selectedBook || '—', 
+                    amount: h.amount, 
+                    type: 'Income Transaction'
+                });
+            });
+            return arr;
+          })
+        : allContributors.flatMap(c => 
+            (c.withdrawals || []).map(w => ({
+                date: w.date, 
+                name: c.name, 
+                book: c.book || selectedBook || '—', 
+                amount: w.amount, 
+                type: 'Withdrawal',
+                reason: w.reason || '—'
+            }))
+          );
+
+    let csv = type === 'income' 
+        ? "Date,Contributor,Book,Amount,Type\n"
+        : "Date,Contributor,Book,Amount,Type,Reason\n";
+    
+    data.forEach(row => {
+        if (type === 'income') {
+            csv += `"${row.date}","${row.name}","${row.book}",${row.amount},"${row.type}"\n`;
+        } else {
+            csv += `"${row.date}","${row.name}","${row.book}",${row.amount},"${row.type}","${row.reason}"\n`;
+        }
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}_statement_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+};
+
+document.getElementById('close-modal-btn').addEventListener('click', () => {
+    document.getElementById('contributor-modal').classList.add('hidden');
+});
+
+document.getElementById('contributor-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const regAmount = parseFloat(this.elements['reg-amount'].value);
+    const deposit = parseFloat(this.elements['deposit'].value);
+    const date = this.elements['date'].value;
+    
+    if (isNaN(regAmount) || regAmount <= 0 || isNaN(deposit) || deposit < 0) {
+        showMessage('Error', 'Please enter valid positive numbers for Registration Amount and Deposit.');
+        return;
+    }
+    
+    if (!date) {
+        showMessage('Error', 'Please select a valid date.');
+        return;
+    }
+    
+    const daysTicked = Math.floor(deposit / regAmount);
+    if (daysTicked > 31) {
+        showMessage('Error', 'Initial deposit would result in more than 31 ticks. Please reduce the deposit amount.');
+        return;
+    }
+    
+    const tickDates = [];
+    const dateStr = convertToDisplayFormat(date);
+    for (let i = 0; i < daysTicked; i++) tickDates[i] = dateStr;
+
+    const newContributor = {
+        name: this.elements['name'].value,
+        regNo: this.elements['reg-no'].value,
+        date: dateStr,
+        regAmount,
+        deposit,
+        totalIncome: deposit,
+        withdrawals: [],
+        incomeHistory: [],
+        tickDates,
+        correctionHistory: []
+    };
+    try {
+        this.querySelector('button').disabled = true;
+        this.querySelector('button').textContent = 'Adding...';
+        await addContributor(newContributor);
+        this.reset();
+        document.getElementById('contributor-modal').classList.add('hidden');
+    } catch (error) {
+        showMessage('Error', `Failed to add contributor: ${error.message}`);
+    } finally {
+        this.querySelector('button').disabled = false;
+        this.querySelector('button').textContent = 'Add Entry';
+    }
+});
+
+function filterContributors() {
+    const selectedMonth = searchMonth.value;
+    const searchText = searchInput.value.toLowerCase().trim();
+    let filteredContributors = allContributors;
+
+    if (selectedMonth) {
+        filteredContributors = filteredContributors.filter(contributor => {
+            const contributorMonth = new Date(dateToComparable(contributor.date)).toLocaleString('en-US', { month: 'long' });
+            return contributorMonth === selectedMonth;
+        });
+    }
+
+    if (searchText) {
+        filteredContributors = filteredContributors.filter(contributor => {
+            const name = (contributor.name || '').toLowerCase();
+            const regNo = (contributor.regNo || '').toLowerCase();
+            return name.includes(searchText) || regNo.includes(searchText);
+        });
+    }
+
+    // Store filtered for pagination
+    filteredContributorsCache = filteredContributors;
+    currentPage = 1; // Reset to first page on filter change
+
+    const paginated = getPaginatedContributors(filteredContributors);
+    renderTable(paginated);
+    renderPagination(filteredContributors.length);
+    
+    if (filteredContributors.length > 0) tableContainer.classList.remove('hidden');
+    else tableContainer.classList.add('hidden');
+}
+
+searchMonth.addEventListener('change', filterContributors);
+searchInput.addEventListener('input', filterContributors);
+
+function setupFirestoreListener() {
+    if (!userId || !selectedBook) return;
+    
+    console.log('Setting up listener for book:', selectedBook);
+    
+    // Load from cache first for instant UI rendering
+    const cachedContributors = CacheManager.getContributors(selectedBook);
+    if (cachedContributors && CacheManager.isCacheValid(selectedBook)) {
+        console.log('Loading contributors from cache:', cachedContributors.length);
+        allContributors = cachedContributors;
+        filterContributors();
+        if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+    }
+    
+    const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/minicontributors`);
+    
+    onSnapshot(contributorsCollectionRef, (snapshot) => {
+        console.log('Firestore snapshot received:', snapshot.docs.length);
+        
+        const contributorsMap = new Map();
+        
+        snapshot.docs.forEach(doc => {
+            let data = doc.data();
+            
+            if (data.book !== selectedBook) {
+                return;
+            }
+            
+            if (!Array.isArray(data.tickDates)) {
+                const numTicks = Math.floor((data.totalContributions || data.deposit || 0) / (data.regAmount || 1));
+                data.tickDates = new Array(numTicks).fill(getCurrentDateStr());
+            }
+            if (!Array.isArray(data.withdrawals)) {
+                data.withdrawals = [];
+            }
+            if (!Array.isArray(data.incomeHistory)) {
+                data.incomeHistory = [];
+            }
+            if (!Array.isArray(data.correctionHistory)) {
+                data.correctionHistory = [];
+            }
+            if (typeof data.totalIncome !== 'number') {
+                data.totalIncome = data.deposit || 0;
+            }
+            data.tickDates = data.tickDates
+                .map((date, index) => ({ date, index }))
+                .sort((a, b) => new Date(dateToComparable(a.date)) - new Date(dateToComparable(b.date)))
+                .map(item => item.date);
+            
+            const normalizedDoc = { id: doc.id, ...data };
+            contributorsMap.set(doc.id, normalizedDoc);
+        });
+        
+        allContributors = Array.from(contributorsMap.values());
+        
+        // Sort by registration number numerically
+        allContributors.sort((a, b) => {
+            const regA = parseInt(a.regNo) || 0;
+            const regB = parseInt(b.regNo) || 0;
+            return regA - regB;
+        });
+        
+        // Cache the contributors data
+        CacheManager.setContributors(selectedBook, allContributors);
+        
+        console.log('Loaded contributors for book', selectedBook, ':', allContributors.length);
+        filterContributors();
+        if (allContributors.length > 0) tableContainer.classList.remove('hidden');
+        else tableContainer.classList.add('hidden');
+    }, (error) => {
+        showMessage('Error', 'Failed to load data from the database.');
+    });
+}
+
+async function addContributor(data) {
+    if (!userId || !selectedBook) return;
+    const daysTicked = Math.floor(data.deposit / data.regAmount);
+    if (daysTicked > 31) {
+        showMessage('Error', 'Initial deposit would result in more than 31 ticks. Please reduce the deposit amount.');
+        return;
+    }
+    try {
+        showModalBtn.disabled = true;
+        showModalBtn.textContent = 'Adding...';
+        const contributorsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/minicontributors`);
+        await addDoc(contributorsCollectionRef, { ...data, correctionHistory: [], incomeHistory: [], book: selectedBook });
+        showMessage('Success', 'Contributor added successfully!');
+        // Clear cache to refresh on next snapshot
+        CacheManager.clearContributorCache(selectedBook);
+        filterContributors();
+    } catch (error) {
+        showMessage('Error', `Failed to add contributor: ${error.message}`);
+    } finally {
+        showModalBtn.disabled = false;
+        showModalBtn.textContent = 'Add New Contributor';
+    }
+}
+
+async function updateContributor(id, data) {
+    if (!userId) return;
+    try {
+        const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/minicontributors`, id);
+        await updateDoc(contributorDocRef, data);
+        showMessage('Success', 'Contributor updated successfully!');
+        // Clear cache to refresh on next snapshot
+        CacheManager.clearContributorCache(selectedBook);
+        filterContributors();
+    } catch (error) {
+        showMessage('Error', `Failed to update contributor: ${error.message}`);
+    }
+}
+
+async function deleteContributor(id) {
+    if (!userId) return;
+    try {
+        const contributorDocRef = doc(db, `artifacts/${appId}/users/${userId}/minicontributors`, id);
+        const deletedContributor = allContributors.find(c => c.id === id);
+        await deleteDoc(contributorDocRef);
+        logAuditAction('DELETE', id, deletedContributor ? deletedContributor.name : 'Unknown', {
+            reason: 'Staff deleted contributor'
+        });
+        showMessage('Success', 'Contributor deleted successfully!');
+        // Clear cache to refresh on next snapshot
+        CacheManager.clearContributorCache(selectedBook);
+        filterContributors();
+    } catch (error) {
+        showMessage('Error', `Failed to delete contributor: ${error.message}`);
+    }
+}
+
+// Modal close listeners (existing ones remain)
+document.getElementById('message-modal-close').addEventListener('click', () => { 
+    messageModal.classList.add('hidden'); 
+});
+
+document.getElementById('custom-input-modal-close').addEventListener('click', () => { 
+    customInputModal.classList.add('hidden');
+    clearModalInputs();
+});
+
+document.getElementById('confirmation-modal-close').addEventListener('click', () => { 
+    confirmationModal.classList.add('hidden'); 
+});
+
+document.getElementById('history-modal-close').addEventListener('click', () => { 
+    historyModal.classList.add('hidden'); 
+});
+
+document.getElementById('daily-icons-modal-close').addEventListener('click', () => { 
+    dailyIconsModal.classList.add('hidden'); 
+});
+
+document.getElementById('expenses-modal-close').addEventListener('click', () => { 
+    expensesModal.classList.add('hidden'); 
+});
+
+document.getElementById('edit-modal-close').addEventListener('click', () => { 
+    editModal.classList.add('hidden'); 
+});
+
+document.getElementById('reg-amount-modal-close').addEventListener('click', () => { 
+    regAmountModal.classList.add('hidden'); 
+});
+
+// Other modal click outside handlers (keep existing)
+
+logoutBtn.addEventListener('click', async () => {
+    try {
+        logoutBtn.disabled = true;
+        logoutBtn.textContent = 'Logging out...';
+        await signOut(auth);
+        sessionStorage.removeItem('user');
+        CacheManager.clearAllCache();
+        showMessage('Success', 'Logged out successfully!');
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 1500);
+    } catch (error) {
+        showMessage('Error', `Logout failed: ${error.message}`);
+    } finally {
+        logoutBtn.disabled = false;
+        logoutBtn.textContent = 'Logout';
+    }
+});
+
+    </script>
+   
+ <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const menuBtn = document.getElementById("menuToggle");
+    const navMenu = document.getElementById("navMenu");
+
+    function updateMenu() {
+        if (window.innerWidth > 768) {
+            // Desktop: Hide hamburger, always show menu
+            menuBtn.style.display = "none";
+            navMenu.classList.add("show");
+            navMenu.style.position = "static";   // Reset position
+            navMenu.style.width = "auto";
+            navMenu.style.boxShadow = "none";
+        } else {
+            // Mobile: Show hamburger, hide menu by default
+            menuBtn.style.display = "flex";
+            navMenu.classList.remove("show");
+            navMenu.style.position = "absolute";
+            navMenu.style.width = "260px";
+            navMenu.style.boxShadow = "0 10px 30px rgba(0,0,0,.2)";
+        }
+    }
+
+    // Initial setup
+    updateMenu();
+
+    // Handle resize
+    window.addEventListener("resize", updateMenu);
+
+    // Toggle menu (only works on mobile)
+    menuBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (window.innerWidth <= 768) {
+            navMenu.classList.toggle("show");
+        }
+    });
+
+    // Close when clicking outside (mobile only)
+    document.addEventListener("click", function (e) {
+        if (window.innerWidth <= 768 && 
+            !menuBtn.contains(e.target) && 
+            !navMenu.contains(e.target)) {
+            navMenu.classList.remove("show");
+        }
+    });
+});
+</script>
+    
+    <!-- Loading Container -->
+    <div id="loading-container" class="loading-spinner">
+        <div class="spinner"></div>
+        <p class="text-gray-700 text-lg font-semibold">Loading...</p>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="hidden">
+        <!-- Professional Header -->
+<header class="header">
+    <div class="header-content">
+        <div class="logo-section">
+            <div class="logo-icon">📊</div>
+            <div class="logo-text">
+                <h1>MINI BOOK</h1>
+                <p>Contribution Management System</p>
+            </div>
+        </div>
+
+        <div class="header-right">
+
+            <div class="user-section">
+                <div class="avatar" id="user-avatar-display">?</div>
+                <div class="user-info">
+                    <h3 id="user-name-display">User</h3>
+                    <p id="user-email-display">email@example.com</p>
+                </div>
+            </div>
+
+            <!-- Hamburger Button -->
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Menu Items -->
+            <div class="nav-actions" id="navMenu">
+                <a href="staff.html">
+                    <i class="fas fa-home"></i> Main Menu
+                </a>
+
+                <button id="show-modal-btn" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Add Contributor
+                </button>
+
+                <button id="show-reg-amount-btn" class="btn btn-info">
+                    <i class="fas fa-list"></i> Show Reg Amounts
+                </button>
+
+                <button id="show-daily-icons-btn" class="btn btn-success">
+                    <i class="fas fa-money-bill"></i> Daily Incomes
+                </button>
+
+                <button id="show-expenses-btn" class="btn btn-warning">
+                    <i class="fas fa-credit-card"></i> Daily Payout
+                </button>
+
+                <button id="logout-btn" class="btn btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+
+        </div>
+    </div>
+</header>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Book Selector -->
+            <div class="controls-section">
+                <div class="form-group">
+                    <label for="book-selector">Select Book</label>
+                    <select id="book-selector">
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table Container -->
+            <div id="table-container" class="hidden">
+                <!-- SEARCH AND FILTER CONTROLS -->
+                <div class="controls-section mb-6 flex flex-wrap gap-4 justify-between items-end">
+                    <div class="form-group flex-1 min-w-[200px]">
+                        <label for="search-input">🔍 Search by Name or Reg No:</label>
+                        <input type="text" id="search-input" placeholder="Enter name or registration number..." class="w-full border px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600" />
+                    </div>
+                    <div class="form-group flex-1 min-w-[200px]">
+                        <label for="search-month">📅 Filter by Month:</label>
+                        <select id="search-month" class="w-full border px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600">
+                            <option value="">All Months</option>
+                            <option>January</option>
+                            <option>February</option>
+                            <option>March</option>
+                            <option>April</option>
+                            <option>May</option>
+                            <option>June</option>
+                            <option>July</option>
+                            <option>August</option>
+                            <option>September</option>
+                            <option>October</option>
+                            <option>November</option>
+                            <option>December</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="table-container rounded-lg shadow-md">
+                    <table id="contributor-table-full">
+                        <thead id="table-head">
+                            <tr id="table-header-row">
+                                <th>Name</th>
+                                <th>Reg No</th>
+                                <th>Date (dd/mm/yyyy)</th>
+                                <th>Book</th>
+                                <th>Reg Amt</th>
+                                <th>Deposit</th>
+                                <th>1st Withdrawal</th>
+                                <th>2nd Withdrawal</th>
+                                <th>3rd Withdrawal</th>
+                                <th>4th Withdrawal</th>
+                                <th>Total Ticks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contributor-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <div id="edit-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Edit Contributor</h2>
+                <button id="edit-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="edit-form" class="grid grid-cols-1 gap-4">
+                <input type="text" id="edit-name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
+                <input type="text" id="edit-reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
+                <input type="date" id="edit-date" required class="border px-4 py-2 rounded-lg" />
+                <input type="number" id="edit-reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+                <input type="number" id="edit-deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
+                <p class="text-xs text-gray-500 italic">💡 Ticks will automatically adjust based on the new deposit amount and date.</p>
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Update Entry</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- REG AMOUNT MODAL -->
+    <div id="reg-amount-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Registration Amounts</h3>
+                <button id="reg-amount-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="reg-amount-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <!-- CONTRIBUTOR MODAL -->
+    <div id="contributor-modal" class="fixed inset-0 hidden items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Add New Contributor</h2>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="contributor-form" class="grid grid-cols-1 gap-4">
+                <input type="text" id="name" placeholder="Name" required class="border px-4 py-2 rounded-lg" />
+                <input type="text" id="reg-no" placeholder="Reg No" required class="border px-4 py-2 rounded-lg" />
+                <input type="date" id="date" required class="border px-4 py-2 rounded-lg" />
+                <input type="number" id="reg-amount" placeholder="Registration Amount (₦)" required class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+                <input type="number" id="deposit" placeholder="Deposit (₦)" required class="border px-4 py-2 rounded-lg" min="0" step="0.01" />
+                <button type="submit" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Add Entry</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM INPUT MODAL -->
+    <div id="custom-input-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="custom-input-modal-title" class="text-xl font-bold text-gray-800">Modal Title</h3>
+                <button id="custom-input-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4">
+                <input type="number" id="custom-input-modal-input" placeholder="Enter amount" class="border px-4 py-2 rounded-lg" min="0.01" step="0.01" />
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Date (dd/mm/yyyy):</label>
+                    <input type="date" id="custom-input-modal-date" class="w-full border px-4 py-2 rounded-lg" />
+                </div>
+                <div id="reason-container">
+                    <input type="text" id="custom-input-modal-reason" placeholder="Reason for correction (optional)" class="border px-4 py-2 rounded-lg w-full" />
+                </div>
+                <button id="custom-input-modal-btn" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300">Button</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MESSAGE MODAL -->
+    <div id="message-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="message-modal-title" class="text-xl font-bold text-gray-800">Message</h3>
+                <button id="message-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="message-modal-text" class="text-gray-700"></p>
+        </div>
+    </div>
+
+    <!-- CONFIRMATION MODAL -->
+    <div id="confirmation-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="confirmation-modal-title" class="text-xl font-bold text-gray-800">Confirm Action</h3>
+                <button id="confirmation-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <p id="confirmation-modal-text" class="text-gray-700 mb-6"></p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirmation-modal-no" class="bg-gray-400 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-500 transition duration-300">No</button>
+                <button id="confirmation-modal-yes" class="bg-red-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY MODAL -->
+    <div id="history-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md mx-4 transform transition-all duration-300 scale-95">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Correction History</h3>
+                <button id="history-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="history-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <!-- DAILY ICONS MODAL -->
+    <div id="daily-icons-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Incomes</h3>
+                <button id="daily-icons-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="daily-icons-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <!-- EXPENSES MODAL -->
+    <div id="expenses-modal" class="fixed inset-0 hidden flex items-center justify-center z-50 modal-backdrop">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl mx-4 transform transition-all duration-300 scale-95 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">Daily Payout</h3>
+                <button id="expenses-modal-close" class="text-gray-500 hover:text-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="expenses-modal-text" class="text-gray-700"></div>
+        </div>
+    </div>
+    <script>
+  
+</script>
+</body>
+</html>
